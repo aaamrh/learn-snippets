@@ -1,12 +1,24 @@
 import { Plugin } from "../types";
 
+// 模块级变量，在 activate 时赋值，addKeyboardShortcuts 的 handler 通过闭包访问
+let _emit: ((event: string, data?: any) => void) | null = null;
+
+const wrapItalic = () => {
+  _emit?.("editor:wrap-selection", {
+    prefix: "*",
+    suffix: "*",
+    placeholder: "斜体文字",
+  });
+};
+
 /**
  * 斜体插件
  *
- * 工作方式：向 'editor:toolbar' 扩展点贡献一个工具栏按钮，
- * 点击时读取 textarea 当前选区，把选中文字包裹成 *text*。
- *
- * 如果没有选中文字，插入 *斜体文字* 占位符。
+ * 快捷键方案（参考 Tiptap addKeyboardShortcuts 设计）：
+ *   插件只声明 { 'Ctrl+I': handler }，不依赖 shortcut 插件的内部 state，
+ *   不需要知道 shortcut 插件存不存在。
+ *   宿主（PluginHost.activate）统一收集所有插件的 addKeyboardShortcuts，
+ *   然后注册到 shortcut 插件里。
  */
 export const italicPlugin: Plugin = {
   id: "italic",
@@ -32,17 +44,20 @@ export const italicPlugin: Plugin = {
     },
   },
 
+  // 声明快捷键，宿主统一收集注册，插件本身不感知 shortcut 插件的存在
+  addKeyboardShortcuts() {
+    return {
+      "Ctrl+I": wrapItalic,
+    };
+  },
+
   activate(context) {
-    const shortcutContext = context.host?.getContext?.("shortcut");
-    const register = shortcutContext?.state.get("register");
-    if (register) {
-      register("Ctrl+I", () => {
-        context.emit("editor:wrap-selection", {
-          prefix: "*",
-          suffix: "*",
-          placeholder: "斜体文字",
-        });
-      });
-    }
+    // 把 context.emit 赋值给模块级变量，供 addKeyboardShortcuts 的 handler 使用
+    _emit = context.emit.bind(context);
+  },
+
+  deactivate() {
+    // 停用时清空，防止插件停用后快捷键仍然触发
+    _emit = null;
   },
 };

@@ -430,8 +430,9 @@ export default function PluginDemoPage() {
       }
       addLog("所有插件注册完成");
 
-      // 激活
-      for (const id of ALL_PLUGIN_IDS) {
+      // shortcut 必须最先激活，因为其他插件的 addKeyboardShortcuts 需要它的 register API 就绪
+      await host.activate("shortcut");
+      for (const id of ALL_PLUGIN_IDS.filter((id) => id !== "shortcut")) {
         await host.activate(id);
       }
       addLog("所有插件激活完成");
@@ -464,7 +465,8 @@ export default function PluginDemoPage() {
         },
       );
 
-      // 注册 Ctrl+S
+      // Ctrl+S 是宿主级快捷键（不属于任何插件），直接注册到 shortcut 插件
+      // 插件级快捷键（Ctrl+B / Ctrl+I）已由 PluginHost.activate 统一收集注册，无需在此处理
       const register = host.getContext("shortcut")?.state.get("register") as
         | ((key: string, fn: () => void) => void)
         | undefined;
@@ -472,7 +474,7 @@ export default function PluginDemoPage() {
         register("Ctrl+S", () => {
           const draft = textareaRef.current?.value ?? "";
           localStorage.setItem("draft", draft);
-          addLog("Ctrl+S 手动保存");
+          addLog("Ctrl+S 手动保存（宿主级快捷键，直接注册）");
           setSaveStatus("saved");
           setSaveTime(new Date().toLocaleTimeString());
           setTimeout(() => setSaveStatus("idle"), 3000);
@@ -558,11 +560,6 @@ export default function PluginDemoPage() {
     push: "bg-green-400",
     mixed: "bg-amber-400",
   };
-  const modeLabel: Record<PluginMeta["mode"], string> = {
-    pull: "拉取",
-    push: "推送",
-    mixed: "混合",
-  };
 
   return (
     <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 font-mono overflow-hidden">
@@ -591,7 +588,7 @@ export default function PluginDemoPage() {
                 className={`w-1.5 h-1.5 rounded-full ${plugin.active ? modeDot[plugin.mode] : "bg-zinc-600"}`}
               />
               {plugin.name}
-              <span className="text-[10px] opacity-60">{modeLabel[plugin.mode]}</span>
+              {/*<span className="text-[10px] opacity-60">{modeLabel[plugin.mode]}</span>*/}
             </button>
           ))}
           <span className="text-[10px] text-zinc-600 ml-1">🔵拉取 &nbsp; 🟢推送 &nbsp; 🟡混合</span>
