@@ -1,72 +1,106 @@
-'use client'
+"use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react'
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  createContext,
+  useContext,
+} from "react";
 
 // ==================== 类型定义 ====================
-type TabType = 'problem' | 'bad' | 'good' | 'demo'
-type ScenarioType = 
+type TabType = "problem" | "bad" | "good" | "demo";
+type ScenarioType =
   // 第一批：用户提到的
-  | 'toolbar' | 'cart' | 'form' | 'undo' | 'permission'
+  | "toolbar"
+  | "cart"
+  | "form"
+  | "undo"
+  | "permission"
   // 第二批：我补充的业务场景
-  | 'table' | 'drag' | 'collab' | 'wizard' | 'upload'
+  | "table"
+  | "drag"
+  | "collab"
+  | "wizard"
+  | "upload"
   // 第三批：架构模式
-  | 'onion' | 'ioc' | 'ratelimit' | 'plugin' | 'state-sync'
+  | "onion"
+  | "ioc"
+  | "ratelimit"
+  | "plugin"
+  | "state-sync"
   // 第四批：领域场景
-  | 'seckill' | 'price-engine' | 'realtime-data' | 'transaction'
+  | "seckill"
+  | "price-engine"
+  | "realtime-data"
+  | "transaction"
   // 第五批：更多架构模式
-  | 'eventbus' | 'strategy' | 'pipeline' | 'scheduler'
+  | "eventbus"
+  | "strategy"
+  | "pipeline"
+  | "scheduler"
   // 第六批：更多领域场景
-  | 'im' | 'approval' | 'report'
+  | "im"
+  | "approval"
+  | "report"
   // 第七批：电商核心场景
-  | 'sku-selector' | 'coupon-stack' | 'inventory-lock'
+  | "sku-selector"
+  | "coupon-stack"
+  | "inventory-lock"
   // 第八批：金融核心场景
-  | 'account-freeze' | 'distributed-id' | 'quote-merge'
+  | "account-freeze"
+  | "distributed-id"
+  | "quote-merge"
   // 第九批：企业级场景
-  | 'data-permission' | 'audit-trail' | 'multi-tenant'
+  | "data-permission"
+  | "audit-trail"
+  | "multi-tenant";
 
 interface Scenario {
-  id: ScenarioType
-  title: string
-  subtitle: string
-  difficulty: number
-  tags: string[]
-  problem: string
-  badCode: string
-  goodCode: string
-  designPattern: string
-  category?: string
+  id: ScenarioType;
+  title: string;
+  subtitle: string;
+  difficulty: number;
+  tags: string[];
+  problem: string;
+  badCode: string;
+  goodCode: string;
+  designPattern: string;
+  category?: string;
 }
 
 // ==================== 代码高亮组件 ====================
-function CodeBlock({ code, type }: { code: string; type: 'bad' | 'good' }) {
-  const bgColor = type === 'bad' ? 'bg-red-950/30' : 'bg-green-950/30'
-  const borderColor = type === 'bad' ? 'border-red-500/30' : 'border-green-500/30'
-  const headerColor = type === 'bad' ? 'text-red-400' : 'text-green-400'
-  
+function CodeBlock({ code, type }: { code: string; type: "bad" | "good" }) {
+  const bgColor = type === "bad" ? "bg-red-950/30" : "bg-green-950/30";
+  const borderColor = type === "bad" ? "border-red-500/30" : "border-green-500/30";
+  const headerColor = type === "bad" ? "text-red-400" : "text-green-400";
+
   return (
     <div className={`rounded-lg border ${borderColor} ${bgColor} overflow-hidden`}>
       <div className={`px-4 py-2 border-b ${borderColor} flex items-center gap-2`}>
         <span className={`text-sm font-medium ${headerColor}`}>
-          {type === 'bad' ? '💩 烂代码 - 别这样写' : '✨ 优雅设计 - 值得学习'}
+          {type === "bad" ? "💩 烂代码 - 别这样写" : "✨ 优雅设计 - 值得学习"}
         </span>
       </div>
-      <pre className="p-4 text-sm overflow-x-auto max-h-[500px]">
+      <pre className="p-4 text-sm overflow-x-auto max-h-[1000px]">
         <code className="text-gray-300 whitespace-pre">{code}</code>
       </pre>
     </div>
-  )
+  );
 }
 
 // ==================== 场景数据 ====================
 const scenarios: Scenario[] = [
   // ==================== 架构模式篇（核心！） ====================
   {
-    id: 'onion',
-    title: '洋葱模型/中间件链',
-    subtitle: 'Koa核心思想在前端的应用',
+    id: "onion",
+    title: "洋葱模型/中间件链",
+    subtitle: "Koa核心思想在前端的应用",
     difficulty: 5,
-    tags: ['洋葱模型', '中间件', '责任链'],
-    category: '架构模式',
+    tags: ["洋葱模型", "中间件", "责任链"],
+    category: "架构模式",
     problem: `洋葱模型是Koa的核心，但它的应用远不止后端：
 
 **前端实际应用场景：**
@@ -93,7 +127,7 @@ const scenarios: Scenario[] = [
 async function fetchUserInfo(userId) {
   const startTime = Date.now()
   console.log('[Request] fetchUserInfo start', { userId })
-  
+
   try {
     // 权限检查
     if (!isLoggedIn()) {
@@ -102,7 +136,7 @@ async function fetchUserInfo(userId) {
     if (!hasPermission('user:read')) {
       throw new Error('无权限')
     }
-    
+
     // 缓存检查
     const cached = localStorage.getItem(\`user_\${userId}\`)
     if (cached) {
@@ -110,26 +144,26 @@ async function fetchUserInfo(userId) {
       trackEvent('cache_hit', { api: 'fetchUserInfo' })
       return JSON.parse(cached)
     }
-    
+
     // 发起请求
     const response = await fetch(\`/api/user/\${userId}\`)
     if (!response.ok) {
       throw new Error(\`请求失败: \${response.status}\`)
     }
     const data = await response.json()
-    
+
     // 缓存结果
     localStorage.setItem(\`user_\${userId}\`, JSON.stringify(data))
-    
+
     // 埋点
-    trackEvent('api_success', { 
-      api: 'fetchUserInfo', 
-      duration: Date.now() - startTime 
+    trackEvent('api_success', {
+      api: 'fetchUserInfo',
+      duration: Date.now() - startTime
     })
-    
+
     console.log('[Request] fetchUserInfo success', { userId })
     return data
-    
+
   } catch (error) {
     // 错误处理
     console.error('[Error] fetchUserInfo failed', error)
@@ -137,8 +171,8 @@ async function fetchUserInfo(userId) {
     reportError(error)
     throw error
   } finally {
-    console.log('[Request] fetchUserInfo end', { 
-      duration: Date.now() - startTime 
+    console.log('[Request] fetchUserInfo end', {
+      duration: Date.now() - startTime
     })
   }
 }
@@ -147,11 +181,11 @@ async function fetchUserInfo(userId) {
 async function fetchOrderList(params) {
   const startTime = Date.now()
   console.log('[Request] fetchOrderList start', { params })
-  
+
   try {
     if (!isLoggedIn()) throw new Error('未登录')
     if (!hasPermission('order:read')) throw new Error('无权限')
-    
+
     // ... 又是重复的缓存检查、请求、埋点、错误处理
   } catch (error) {
     // ... 又是重复的错误处理
@@ -178,15 +212,15 @@ class Onion<T> {
 
   async execute(ctx: T) {
     const middlewares = this.middlewares.slice()
-    
+
     // 核心递归：从外到内，再从内到外
     const dispatch = (index: number): Promise<void> => {
       if (index >= middlewares.length) return Promise.resolve()
-      
+
       const middleware = middlewares[index]
       return middleware(ctx, () => dispatch(index + 1))
     }
-    
+
     await dispatch(0)
   }
 }
@@ -218,14 +252,14 @@ interface RequestContext {
 const loggerMiddleware: Middleware<RequestContext> = async (ctx, next) => {
   const { request } = ctx
   console.log(\`[Request] \${request.method} \${request.url}\`, request.params)
-  
+
   const startTime = Date.now()
   try {
     await next()  // 继续往里走
   } finally {
     // 响应回来后执行（洋葱的内层返回）
     const duration = Date.now() - startTime
-    console.log(\`[Response] \${request.url}\`, { 
+    console.log(\`[Response] \${request.url}\`, {
       status: ctx.response.status,
       duration: \`\${duration}ms\`,
       fromCache: ctx.state.fromCache
@@ -251,14 +285,14 @@ const authMiddleware: Middleware<RequestContext> = async (ctx, next) => {
     ctx.response.data = { error: '请先登录' }
     return
   }
-  
+
   const permission = getRequiredPermission(ctx.request.url)
   if (permission && !hasPermission(permission)) {
     ctx.response.status = 403
     ctx.response.data = { error: '无权限访问' }
     return
   }
-  
+
   await next()
 }
 
@@ -266,15 +300,15 @@ const authMiddleware: Middleware<RequestContext> = async (ctx, next) => {
 const cacheMiddleware: Middleware<RequestContext> = async (ctx, next) => {
   const cacheKey = getCacheKey(ctx.request)
   const cached = cache.get(cacheKey)
-  
+
   if (cached && !isExpired(cached)) {
     ctx.response = cached.response
     ctx.state.fromCache = true
     return  // 命中缓存，不继续往下
   }
-  
+
   await next()  // 未命中，继续请求
-  
+
   // 响应回来后缓存（洋葱返回阶段）
   if (ctx.response.status === 200) {
     cache.set(cacheKey, {
@@ -288,7 +322,7 @@ const cacheMiddleware: Middleware<RequestContext> = async (ctx, next) => {
 const retryMiddleware: Middleware<RequestContext> = async (ctx, next) => {
   const maxRetry = 3
   let lastError: Error
-  
+
   for (let i = 0; i < maxRetry; i++) {
     try {
       ctx.state.retryCount = i
@@ -300,17 +334,17 @@ const retryMiddleware: Middleware<RequestContext> = async (ctx, next) => {
       await delay(1000 * Math.pow(2, i))  // 指数退避
     }
   }
-  
+
   throw lastError
 }
 
 // 埋点中间件
 const trackingMiddleware: Middleware<RequestContext> = async (ctx, next) => {
   const startTime = Date.now()
-  
+
   try {
     await next()
-    
+
     // 成功埋点
     trackEvent('api_success', {
       url: ctx.request.url,
@@ -333,14 +367,14 @@ const trackingMiddleware: Middleware<RequestContext> = async (ctx, next) => {
 // 实际请求中间件
 const fetchMiddleware: Middleware<RequestContext> = async (ctx, next) => {
   await next()  // 先让其他中间件处理完
-  
+
   // 执行实际请求
   const response = await fetch(ctx.request.url, {
     method: ctx.request.method,
     headers: ctx.request.headers,
     body: JSON.stringify(ctx.request.params)
   })
-  
+
   ctx.response = {
     status: response.status,
     data: await response.json(),
@@ -370,13 +404,13 @@ async function fetchUserInfo(userId: string) {
     response: { status: 0, data: null, headers: {} },
     state: { startTime: Date.now(), fromCache: false, retryCount: 0 }
   }
-  
+
   await httpClient.execute(ctx)
-  
+
   if (ctx.response.status !== 200) {
     throw new Error(ctx.response.data.error)
   }
-  
+
   return ctx.response.data
 }
 
@@ -396,15 +430,15 @@ httpClient.use(signatureMiddleware)  // 一行搞定！
 // 3. 新增功能零侵入
 // 4. 中间件可复用、可测试
 // 5. 执行顺序清晰可控`,
-    designPattern: '洋葱模型 + 中间件模式 + 责任链模式'
+    designPattern: "洋葱模型 + 中间件模式 + 责任链模式",
   },
   {
-    id: 'ioc',
-    title: '控制反转(IoC)与依赖注入',
-    subtitle: '解耦复杂系统的核心思想',
+    id: "ioc",
+    title: "控制反转(IoC)与依赖注入",
+    subtitle: "解耦复杂系统的核心思想",
     difficulty: 5,
-    tags: ['IoC', '依赖注入', '服务定位器'],
-    category: '架构模式',
+    tags: ["IoC", "依赖注入", "服务定位器"],
+    category: "架构模式",
     problem: `控制反转是后端框架的核心，但前端同样需要：
 
 **前端实际痛点：**
@@ -439,16 +473,16 @@ class UserService {
   private logger = new Logger()  // 写死
   private eventBus = new EventBus()  // 写死
   private auth = new AuthService()  // 写死
-  
+
   async getUser(id: string) {
     this.logger.info('getUser', { id })
-    
+
     const cached = this.cache.get(\`user_\${id}\`)
     if (cached) return cached
-    
+
     const user = await this.http.get(\`/user/\${id}\`)
     this.cache.set(\`user_\${id}\`, user)
-    
+
     this.eventBus.emit('user:loaded', user)
     return user
   }
@@ -554,12 +588,12 @@ class Container {
     if (this.services.has(token)) {
       return this.services.get(token)
     }
-    
+
     // 通过工厂创建
     if (this.factories.has(token)) {
       return this.factories.get(token)()
     }
-    
+
     throw new Error(\`Service not found: \${token.toString()}\`)
   }
 
@@ -590,14 +624,14 @@ function Inject(token: symbol) {
 // 5. 服务实现
 class HttpClient implements IHttpClient {
   constructor(private config: { baseUrl: string; timeout: number }) {}
-  
+
   async get<T>(url: string): Promise<T> {
     const response = await fetch(\`\${this.config.baseUrl}\${url}\`, {
       signal: AbortSignal.timeout(this.config.timeout)
     })
     return response.json()
   }
-  
+
   async post<T>(url: string, data: any): Promise<T> {
     const response = await fetch(\`\${this.config.baseUrl}\${url}\`, {
       method: 'POST',
@@ -615,20 +649,20 @@ class UserService implements IUserService {
     private logger: ILogger,
     private eventBus: IEventBus
   ) {}
-  
+
   async getUser(id: string): Promise<User> {
     this.logger.info('getUser', { id })
-    
+
     const cached = this.cache.get<User>(\`user_\${id}\`)
     if (cached) return cached
-    
+
     const user = await this.http.get<User>(\`/user/\${id}\`)
     this.cache.set(\`user_\${id}\`, user, 300000)
-    
+
     this.eventBus.emit('user:loaded', user)
     return user
   }
-  
+
   async updateUser(user: User): Promise<void> {
     await this.http.post(\`/user/\${user.id}\`, user)
     this.cache.delete(\`user_\${user.id}\`)
@@ -681,15 +715,15 @@ function useService<T>(token: symbol): T {
 function UserProfile({ userId }: { userId: string }) {
   const userService = useService<IUserService>(Tokens.UserService)
   const logger = useService<ILogger>(Tokens.Logger)
-  
+
   const [user, setUser] = useState<User | null>(null)
-  
+
   useEffect(() => {
     userService.getUser(userId)
       .then(setUser)
       .catch(err => logger.error('Failed to load user', err))
   }, [userId])
-  
+
   return <div>{user?.name}</div>
 }
 
@@ -708,10 +742,10 @@ const testContainer = new Container()
 
 test('getUser', async () => {
   mockHttpClient.get.mockResolvedValue({ id: '1', name: 'Test' })
-  
+
   const userService = testContainer.resolve<IUserService>(Tokens.UserService)
   const user = await userService.getUser('1')
-  
+
   expect(user.name).toBe('Test')
 })
 
@@ -727,15 +761,15 @@ container.singleton(Tokens.Cache, () => new IndexedDBCache())
 // 3. 配置集中管理
 // 4. 解决循环依赖（延迟解析）
 // 5. 单例自动管理`,
-    designPattern: '控制反转(IoC) + 依赖注入(DI) + 服务定位器'
+    designPattern: "控制反转(IoC) + 依赖注入(DI) + 服务定位器",
   },
   {
-    id: 'ratelimit',
-    title: '限流与熔断',
-    subtitle: '令牌桶/漏桶算法保护系统',
+    id: "ratelimit",
+    title: "限流与熔断",
+    subtitle: "令牌桶/漏桶算法保护系统",
     difficulty: 5,
-    tags: ['令牌桶', '漏桶', '熔断器'],
-    category: '架构模式',
+    tags: ["令牌桶", "漏桶", "熔断器"],
+    category: "架构模式",
     problem: `前端也需要限流！不是只有后端才用：
 
 **前端限流场景：**
@@ -762,7 +796,7 @@ container.singleton(Tokens.Cache, () => new IndexedDBCache())
 // 搜索组件
 function SearchBox() {
   const [query, setQuery] = useState('')
-  
+
   // 问题1: debounce 时间写死，不同场景不同需求
   const debouncedSearch = useMemo(
     () => debounce(async (q) => {
@@ -771,23 +805,23 @@ function SearchBox() {
     }, 300),  // 为什么是300？凭感觉
     []
   )
-  
+
   const handleChange = (e) => {
     setQuery(e.target.value)
     debouncedSearch(e.target.value)
   }
-  
+
   return <input onChange={handleChange} />
 }
 
 // 列表刷新
 function RefreshButton() {
   const [loading, setLoading] = useState(false)
-  
+
   // 问题2: 手动控制 loading，但用户可以疯狂点
   const handleRefresh = async () => {
     if (loading) return  // 简单判断，但不完善
-    
+
     setLoading(true)
     try {
       await fetchList()
@@ -795,7 +829,7 @@ function RefreshButton() {
       setLoading(false)
     }
   }
-  
+
   return <button onClick={handleRefresh}>刷新</button>
 }
 
@@ -808,7 +842,7 @@ function RefreshButton() {
 class TokenBucket {
   private tokens: number
   private lastRefill: number
-  
+
   constructor(
     private capacity: number,    // 桶容量
     private refillRate: number,  // 每秒补充的令牌数
@@ -817,18 +851,18 @@ class TokenBucket {
     this.tokens = capacity
     this.lastRefill = Date.now()
   }
-  
+
   // 尝试获取令牌
   tryAcquire(tokens = 1): boolean {
     this.refill()
-    
+
     if (this.tokens >= tokens) {
       this.tokens -= tokens
       return true
     }
     return false
   }
-  
+
   // 等待获取令牌（返回等待时间）
   async acquire(tokens = 1): Promise<void> {
     while (!this.tryAcquire(tokens)) {
@@ -836,25 +870,25 @@ class TokenBucket {
       await delay(waitTime)
     }
   }
-  
+
   // 补充令牌
   private refill() {
     const now = Date.now()
     const elapsed = now - this.lastRefill
-    
+
     if (elapsed >= this.refillInterval) {
       const tokensToAdd = Math.floor(elapsed / this.refillInterval) * this.refillRate
       this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd)
       this.lastRefill = now
     }
   }
-  
+
   private getTimeToNextToken(needed: number): number {
     const deficit = needed - this.tokens
     if (deficit <= 0) return 0
     return Math.ceil((deficit / this.refillRate) * this.refillInterval)
   }
-  
+
   // 获取当前状态（用于监控）
   getStatus() {
     return {
@@ -869,18 +903,18 @@ class TokenBucket {
 class LeakyBucket {
   private queue: Array<() => Promise<any>> = []
   private processing = false
-  
+
   constructor(
     private capacity: number,    // 桶容量
     private leakRate: number     // 每秒处理的请求数
   ) {}
-  
+
   // 添加请求到桶中
   async add<T>(request: () => Promise<T>): Promise<T> {
     if (this.queue.length >= this.capacity) {
       throw new Error('Bucket overflow')
     }
-    
+
     return new Promise((resolve, reject) => {
       this.queue.push(async () => {
         try {
@@ -890,23 +924,23 @@ class LeakyBucket {
           reject(error)
         }
       })
-      
+
       this.process()
     })
   }
-  
+
   // 以固定速率处理请求
   private async process() {
     if (this.processing || this.queue.length === 0) return
-    
+
     this.processing = true
-    
+
     while (this.queue.length > 0) {
       const request = this.queue.shift()!
       await request()
       await delay(1000 / this.leakRate)  // 固定间隔
     }
-    
+
     this.processing = false
   }
 }
@@ -919,13 +953,13 @@ class CircuitBreaker {
   private failures = 0
   private lastFailureTime = 0
   private successCount = 0
-  
+
   constructor(
     private failureThreshold: number,   // 失败次数阈值
     private recoveryTimeout: number,    // 恢复超时(ms)
     private halfOpenSuccesses: number   // 半开状态成功次数
   ) {}
-  
+
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     // 熔断器打开，直接拒绝
     if (this.state === 'open') {
@@ -936,7 +970,7 @@ class CircuitBreaker {
         throw new Error('Circuit breaker is open')
       }
     }
-    
+
     try {
       const result = await fn()
       this.onSuccess()
@@ -946,10 +980,10 @@ class CircuitBreaker {
       throw error
     }
   }
-  
+
   private onSuccess() {
     this.failures = 0
-    
+
     if (this.state === 'half-open') {
       this.successCount++
       if (this.successCount >= this.halfOpenSuccesses) {
@@ -957,16 +991,16 @@ class CircuitBreaker {
       }
     }
   }
-  
+
   private onFailure() {
     this.failures++
     this.lastFailureTime = Date.now()
-    
+
     if (this.failures >= this.failureThreshold) {
       this.state = 'open'
     }
   }
-  
+
   getState() {
     return {
       state: this.state,
@@ -980,7 +1014,7 @@ class CircuitBreaker {
 class RateLimiterManager {
   private buckets = new Map<string, TokenBucket>()
   private circuits = new Map<string, CircuitBreaker>()
-  
+
   // 为某个 API 创建限流器
   configure(apiKey: string, config: {
     tokensPerSecond: number
@@ -994,7 +1028,7 @@ class RateLimiterManager {
       config.burstSize,
       config.tokensPerSecond
     ))
-    
+
     if (config.circuitBreaker) {
       this.circuits.set(apiKey, new CircuitBreaker(
         config.circuitBreaker.failureThreshold,
@@ -1003,33 +1037,33 @@ class RateLimiterManager {
       ))
     }
   }
-  
+
   // 限流执行请求
   async execute<T>(apiKey: string, request: () => Promise<T>): Promise<T> {
     const bucket = this.buckets.get(apiKey)
     const circuit = this.circuits.get(apiKey)
-    
+
     // 等待令牌
     if (bucket) {
       await bucket.acquire()
     }
-    
+
     // 熔断保护
     if (circuit) {
       return circuit.execute(request)
     }
-    
+
     return request()
   }
-  
+
   // 尝试执行（不等待，失败立即返回）
   tryExecute<T>(apiKey: string, request: () => Promise<T>): Promise<T> | null {
     const bucket = this.buckets.get(apiKey)
-    
+
     if (bucket && !bucket.tryAcquire()) {
       return null  // 限流
     }
-    
+
     return request()
   }
 }
@@ -1072,10 +1106,10 @@ function useRateLimitedRequest<T>(
     error: null,
     rateLimited: false
   })
-  
+
   const execute = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, rateLimited: false }))
-    
+
     try {
       const data = await rateLimiter.execute(apiKey, request)
       setState({ loading: false, data, error: null, rateLimited: false })
@@ -1087,7 +1121,7 @@ function useRateLimitedRequest<T>(
       }
     }
   }, [apiKey, request])
-  
+
   return { ...state, execute }
 }
 
@@ -1098,14 +1132,14 @@ function SearchBox() {
     '/api/search',
     () => fetch(\`/api/search?q=\${query}\`).then(r => r.json())
   )
-  
+
   // 输入时自动限流
   useEffect(() => {
     if (query.length >= 2) {
       execute()
     }
   }, [query])
-  
+
   return <input value={query} onChange={e => setQuery(e.target.value)} />
 }
 
@@ -1114,10 +1148,10 @@ function PaymentButton() {
     '/api/payment',
     () => processPayment()
   )
-  
+
   return (
-    <button 
-      onClick={execute} 
+    <button
+      onClick={execute}
       disabled={loading || rateLimited}
     >
       {rateLimited ? '请求过于频繁，请稍后再试' : '支付'}
@@ -1131,15 +1165,15 @@ function PaymentButton() {
 // 3. 熔断保护，防止级联失败
 // 4. 自动恢复（半开状态）
 // 5. 监控友好，状态可观测`,
-    designPattern: '令牌桶 + 漏桶 + 熔断器模式'
+    designPattern: "令牌桶 + 漏桶 + 熔断器模式",
   },
   {
-    id: 'plugin',
-    title: '插件系统架构',
-    subtitle: '低代码平台/编辑器核心',
+    id: "plugin",
+    title: "插件系统架构",
+    subtitle: "低代码平台/编辑器核心",
     difficulty: 5,
-    tags: ['插件架构', '生命周期', '钩子系统'],
-    category: '架构模式',
+    tags: ["插件架构", "生命周期", "钩子系统"],
+    category: "架构模式",
     problem: `插件系统是复杂应用的核心架构：
 
 **需要插件系统的场景：**
@@ -1166,7 +1200,7 @@ function PaymentButton() {
 
 function Editor() {
   const [content, setContent] = useState('')
-  
+
   // 功能1：自动保存，写死在组件里
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1174,21 +1208,21 @@ function Editor() {
     }, 5000)
     return () => clearInterval(timer)
   }, [content])
-  
+
   // 功能2：字数统计，写死在组件里
   const wordCount = content.length
-  
+
   // 功能3：Markdown 预览，写死在组件里
   const [preview, setPreview] = useState('')
   useEffect(() => {
     setPreview(markdownToHtml(content))
   }, [content])
-  
+
   // 功能4：语法高亮...
   // 功能5：自动补全...
   // 功能6：快捷键...
   // 每加一个功能都要改这个组件，越来越臃肿
-  
+
   return (
     <div>
       <textarea value={content} onChange={e => setContent(e.target.value)} />
@@ -1213,13 +1247,13 @@ interface Plugin {
   name: string
   version: string
   dependencies?: string[]  // 依赖的其他插件
-  
+
   // 生命周期钩子
   install?(host: PluginHost): void | Promise<void>
   activate?(context: PluginContext): void | Promise<void>
   deactivate?(): void | Promise<void>
   uninstall?(): void | Promise<void>
-  
+
   // 扩展点注册
   extensions?: {
     [extensionPoint: string]: ExtensionHandler
@@ -1235,21 +1269,21 @@ interface ExtensionHandler {
 interface PluginContext {
   // 能力注入
   host: PluginHost
-  
+
   // 状态存储
   state: Map<string, any>
-  
+
   // 事件通信
   on(event: string, handler: Function): void
   off(event: string, handler: Function): void
   emit(event: string, data: any): void
-  
+
   // 其他插件访问
   getPlugin(id: string): Plugin | null
-  
+
   // 扩展点注册
   registerExtension(point: string, handler: ExtensionHandler): void
-  
+
   // 配置
   config: Record<string, any>
 }
@@ -1261,12 +1295,12 @@ class PluginHost {
   private extensionPoints = new Map<string, ExtensionHandler[]>()
   private eventBus = new EventEmitter()
   private hooks = new Map<string, Set<Function>>()
-  
+
   // 注册扩展点（宿主定义）
   defineExtensionPoint(name: string) {
     this.extensionPoints.set(name, [])
   }
-  
+
   // 触发扩展点（宿主调用）
   async invokeExtension<T>(point: string, ...args: any[]): Promise<T[]> {
     const handlers = this.extensionPoints.get(point) || []
@@ -1275,7 +1309,7 @@ class PluginHost {
     )
     return results
   }
-  
+
   // 注册插件
   async register(plugin: Plugin) {
     // 检查依赖
@@ -1286,9 +1320,9 @@ class PluginHost {
         }
       }
     }
-    
+
     this.plugins.set(plugin.id, plugin)
-    
+
     // 创建上下文
     const context: PluginContext = {
       host: this,
@@ -1306,30 +1340,30 @@ class PluginHost {
       },
       config: {}
     }
-    
+
     this.contexts.set(plugin.id, context)
-    
+
     // 注册扩展
     if (plugin.extensions) {
       for (const [point, handler] of Object.entries(plugin.extensions)) {
         context.registerExtension(point, handler)
       }
     }
-    
+
     // 安装
     await plugin.install?.(this)
   }
-  
+
   // 激活插件
   async activate(pluginId: string) {
     const plugin = this.plugins.get(pluginId)
     const context = this.contexts.get(pluginId)
-    
+
     if (plugin && context) {
       await plugin.activate?.(context)
     }
   }
-  
+
   // 停用插件
   async deactivate(pluginId: string) {
     const plugin = this.plugins.get(pluginId)
@@ -1337,7 +1371,7 @@ class PluginHost {
       await plugin.deactivate?.()
     }
   }
-  
+
   // 卸载插件
   async uninstall(pluginId: string) {
     const plugin = this.plugins.get(pluginId)
@@ -1346,7 +1380,7 @@ class PluginHost {
       await plugin.uninstall?.()
       this.plugins.delete(pluginId)
       this.contexts.delete(pluginId)
-      
+
       // 移除扩展
       for (const handlers of this.extensionPoints.values()) {
         const index = handlers.findIndex(h => h.handler === plugin)
@@ -1354,7 +1388,7 @@ class PluginHost {
       }
     }
   }
-  
+
   // 钩子系统
   onHook(name: string, handler: Function) {
     if (!this.hooks.has(name)) {
@@ -1362,7 +1396,7 @@ class PluginHost {
     }
     this.hooks.get(name)!.add(handler)
   }
-  
+
   async emitHook(name: string, ...args: any[]) {
     const handlers = this.hooks.get(name)
     if (handlers) {
@@ -1380,10 +1414,10 @@ const autoSavePlugin: Plugin = {
   id: 'auto-save',
   name: 'Auto Save',
   version: '1.0.0',
-  
+
   activate(context) {
     let timer: NodeJS.Timeout
-    
+
     context.on('content:change', (content: string) => {
       clearTimeout(timer)
       timer = setTimeout(() => {
@@ -1391,10 +1425,10 @@ const autoSavePlugin: Plugin = {
         context.emit('save:success', { timestamp: Date.now() })
       }, 5000)
     })
-    
+
     context.state.set('timer', timer)
   },
-  
+
   deactivate(context) {
     clearTimeout(context.state.get('timer'))
   }
@@ -1405,7 +1439,7 @@ const wordCountPlugin: Plugin = {
   id: 'word-count',
   name: 'Word Count',
   version: '1.0.0',
-  
+
   extensions: {
     'editor:status-bar': {
       handler: ({ content }: { content: string }) => ({
@@ -1422,7 +1456,7 @@ const markdownPreviewPlugin: Plugin = {
   name: 'Markdown Preview',
   version: '1.0.0',
   dependencies: ['word-count'],  // 依赖字数统计插件
-  
+
   extensions: {
     'editor:panel': {
       handler: ({ content }: { content: string }) => ({
@@ -1439,15 +1473,15 @@ const shortcutPlugin: Plugin = {
   id: 'shortcut',
   name: 'Shortcut Manager',
   version: '1.0.0',
-  
+
   activate(context) {
     const shortcuts = new Map<string, Function>()
-    
+
     // 注册快捷键的 API
     context.state.set('register', (key: string, handler: Function) => {
       shortcuts.set(key, handler)
     })
-    
+
     // 全局监听
     const handler = (e: KeyboardEvent) => {
       const key = formatKey(e)
@@ -1457,11 +1491,11 @@ const shortcutPlugin: Plugin = {
         fn()
       }
     }
-    
+
     window.addEventListener('keydown', handler)
     context.state.set('handler', handler)
   },
-  
+
   deactivate(context) {
     window.removeEventListener('keydown', context.state.get('handler'))
   }
@@ -1473,30 +1507,30 @@ function Editor() {
   const hostRef = useRef<PluginHost>()
   const [statusBarItems, setStatusBarItems] = useState<any[]>([])
   const [panels, setPanels] = useState<any[]>([])
-  
+
   // 初始化插件系统
   useEffect(() => {
     const host = new PluginHost()
-    
+
     // 定义扩展点
     host.defineExtensionPoint('editor:status-bar')
     host.defineExtensionPoint('editor:panel')
     host.defineExtensionPoint('editor:toolbar')
-    
+
     // 注册插件
     host.register(autoSavePlugin)
     host.register(wordCountPlugin)
     host.register(shortcutPlugin)
     host.register(markdownPreviewPlugin)
-    
+
     // 激活所有插件
     host.activate('auto-save')
     host.activate('word-count')
     host.activate('shortcut')
     host.activate('markdown-preview')
-    
+
     hostRef.current = host
-    
+
     return () => {
       // 卸载所有插件
       host.uninstall('auto-save')
@@ -1505,36 +1539,36 @@ function Editor() {
       host.uninstall('markdown-preview')
     }
   }, [])
-  
+
   // 内容变化时通知插件
   const handleChange = async (newContent: string) => {
     setContent(newContent)
-    
+
     const host = hostRef.current
     if (host) {
       // 触发事件
       host.emitHook('content:change', newContent)
-      
+
       // 获取扩展点返回的内容
       const items = await host.invokeExtension('editor:status-bar', { content: newContent })
       setStatusBarItems(items)
-      
+
       const panelItems = await host.invokeExtension('editor:panel', { content: newContent })
       setPanels(panelItems)
     }
   }
-  
+
   return (
     <div className="editor">
       <textarea value={content} onChange={e => handleChange(e.target.value)} />
-      
+
       {/* 状态栏 - 插件可扩展 */}
       <div className="status-bar">
         {statusBarItems.map((item, i) => (
           <span key={i}>{item.label}: {item.value}</span>
         ))}
       </div>
-      
+
       {/* 面板区 - 插件可扩展 */}
       <div className="panels">
         {panels.map(panel => (
@@ -1549,22 +1583,22 @@ function Editor() {
 function usePluginHost(initialPlugins: Plugin[]) {
   const hostRef = useRef<PluginHost>()
   const [, forceUpdate] = useState(0)
-  
+
   useEffect(() => {
     const host = new PluginHost()
     host.defineExtensionPoint('editor:status-bar')
-    
+
     initialPlugins.forEach(p => host.register(p))
     initialPlugins.forEach(p => host.activate(p.id))
-    
+
     hostRef.current = host
     forceUpdate(x => x + 1)
-    
+
     return () => {
       initialPlugins.forEach(p => host.uninstall(p.id))
     }
   }, [])
-  
+
   return hostRef.current
 }
 
@@ -1574,15 +1608,15 @@ function usePluginHost(initialPlugins: Plugin[]) {
 // 3. 生命周期完整管理
 // 4. 依赖自动解析
 // 5. 扩展点灵活定义`,
-    designPattern: '插件架构 + 生命周期 + 扩展点模式'
+    designPattern: "插件架构 + 生命周期 + 扩展点模式",
   },
   {
-    id: 'state-sync',
-    title: '多端状态同步引擎',
-    subtitle: '离线优先 + 冲突解决',
+    id: "state-sync",
+    title: "多端状态同步引擎",
+    subtitle: "离线优先 + 冲突解决",
     difficulty: 5,
-    tags: ['状态同步', '离线优先', 'CRDT'],
-    category: '架构模式',
+    tags: ["状态同步", "离线优先", "CRDT"],
+    category: "架构模式",
     problem: `多端同步是现代应用的必备能力：
 
 **实际场景：**
@@ -1609,14 +1643,14 @@ function usePluginHost(initialPlugins: Plugin[]) {
 
 function TodoApp() {
   const [todos, setTodos] = useState([])
-  
+
   // 只从服务器获取
   useEffect(() => {
     fetch('/api/todos')
       .then(r => r.json())
       .then(setTodos)
   }, [])
-  
+
   // 直接发送到服务器
   const addTodo = async (text: string) => {
     const response = await fetch('/api/todos', {
@@ -1626,13 +1660,13 @@ function TodoApp() {
     const newTodo = await response.json()
     setTodos([...todos, newTodo])
   }
-  
+
   // 问题：
   // 1. 离线时无法使用
   // 2. 网络错误直接丢失操作
   // 3. 多设备同时修改会覆盖
   // 4. 每次都要请求全部数据
-  
+
   return (
     <div>
       {todos.map(todo => <div key={todo.id}>{todo.text}</div>)}
@@ -1643,13 +1677,13 @@ function TodoApp() {
     goodCode: `// ✅ 优雅设计：离线优先 + 增量同步 + CRDT
 
 // ==================== 同步状态机 ====================
-type SyncState = 
+type SyncState =
   | { status: 'idle' }
   | { status: 'syncing'; pendingCount: number }
   | { status: 'offline'; pendingCount: number }
   | { status: 'error'; error: Error; pendingCount: number }
 
-type SyncEvent = 
+type SyncEvent =
   | { type: 'GO_ONLINE' }
   | { type: 'GO_OFFLINE' }
   | { type: 'LOCAL_CHANGE'; change: Change }
@@ -1677,7 +1711,7 @@ class SyncEngine<T extends { id: string; version: number }> {
   private syncState: SyncState = { status: 'idle' }
   private listeners = new Set<(state: SyncState) => void>()
   private deviceId: string
-  
+
   constructor(
     private collection: string,
     private remoteAPI: SyncAPI
@@ -1685,26 +1719,26 @@ class SyncEngine<T extends { id: string; version: number }> {
     this.deviceId = this.getDeviceId()
     this.init()
   }
-  
+
   private async init() {
     // 加载本地数据
     await this.loadPendingChanges()
-    
+
     // 监听网络状态
     window.addEventListener('online', () => this.onOnline())
     window.addEventListener('offline', () => this.onOffline())
-    
+
     // 监听远程推送
     this.remoteAPI.subscribe(this.collection, (change) => {
       this.applyRemoteChange(change)
     })
-    
+
     // 初始同步
     if (navigator.onLine) {
       await this.sync()
     }
   }
-  
+
   // 本地变更
   async localChange(change: Omit<Change, 'id' | 'timestamp' | 'deviceId' | 'version'>) {
     const fullChange: Change = {
@@ -1714,14 +1748,14 @@ class SyncEngine<T extends { id: string; version: number }> {
       deviceId: this.deviceId,
       version: await this.getNextVersion()
     }
-    
+
     // 1. 立即应用到本地
     await this.applyLocalChange(fullChange)
-    
+
     // 2. 保存到待同步队列
     this.pendingChanges.push(fullChange)
     await this.savePendingChanges()
-    
+
     // 3. 尝试同步
     if (navigator.onLine) {
       this.sync()
@@ -1729,13 +1763,13 @@ class SyncEngine<T extends { id: string; version: number }> {
       this.updateState({ status: 'offline', pendingCount: this.pendingChanges.length })
     }
   }
-  
+
   // 同步到服务器
   private async sync() {
     if (this.pendingChanges.length === 0) return
-    
+
     this.updateState({ status: 'syncing', pendingCount: this.pendingChanges.length })
-    
+
     try {
       // 批量发送变更
       const result = await this.remoteAPI.sync(this.collection, {
@@ -1743,38 +1777,38 @@ class SyncEngine<T extends { id: string; version: number }> {
         changes: this.pendingChanges,
         lastSyncVersion: await this.getLastSyncVersion()
       })
-      
+
       // 处理远程变更
       for (const remoteChange of result.changes) {
         await this.applyRemoteChange(remoteChange)
       }
-      
+
       // 清除已同步的变更
       this.pendingChanges = this.pendingChanges.filter(
         c => !result.syncedIds.includes(c.id)
       )
       await this.savePendingChanges()
-      
+
       // 更新同步版本
       await this.setLastSyncVersion(result.newVersion)
-      
+
       this.updateState({ status: 'idle' })
-      
+
     } catch (error) {
       this.updateState({ status: 'error', error, pendingCount: this.pendingChanges.length })
     }
   }
-  
+
   // 应用远程变更（可能产生冲突）
   private async applyRemoteChange(remoteChange: Change) {
     const local = await this.localDB.get(this.collection, remoteChange.documentId)
-    
+
     if (!local) {
       // 本地不存在，直接应用
       await this.localDB.put(this.collection, remoteChange.data)
       return
     }
-    
+
     // 冲突检测
     if (local.version >= remoteChange.version) {
       // 本地版本更新或相同，需要解决冲突
@@ -1785,38 +1819,38 @@ class SyncEngine<T extends { id: string; version: number }> {
       await this.localDB.put(this.collection, remoteChange.data)
     }
   }
-  
+
   // 冲突解决策略
   private async resolveConflict(local: T, remote: Change): Promise<T> {
     // 策略1: 最后写入胜出
     // return remote.timestamp > local.updatedAt ? remote.data : local
-    
+
     // 策略2: 字段级合并
     // return this.mergeFields(local, remote.data)
-    
+
     // 策略3: CRDT（推荐）
     return this.crdtMerge(local, remote.data)
   }
-  
+
   // CRDT 合并（以 Todo 为例）
   private crdtMerge(local: any, remote: any): any {
     // 使用 Last-Writer-Wins Register
     const merged: any = { ...local }
-    
+
     for (const key of Object.keys(remote)) {
       if (remote[key]?.timestamp > (local[key]?.timestamp || 0)) {
         merged[key] = remote[key]
       }
     }
-    
+
     return merged
   }
-  
+
   private updateState(state: SyncState) {
     this.syncState = state
     this.listeners.forEach(l => l(state))
   }
-  
+
   subscribe(listener: (state: SyncState) => void) {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
@@ -1830,7 +1864,7 @@ function useSyncedCollection<T extends { id: string; version: number }>(
   const [data, setData] = useState<T[]>([])
   const [syncState, setSyncState] = useState<SyncState>({ status: 'idle' })
   const engineRef = useRef<SyncEngine<T>>()
-  
+
   useEffect(() => {
     const engine = new SyncEngine<T>(collection, {
       sync: async (col, payload) => {
@@ -1846,13 +1880,13 @@ function useSyncedCollection<T extends { id: string; version: number }>(
         return () => ws.close()
       }
     })
-    
+
     engine.subscribe(setSyncState)
     engineRef.current = engine
-    
+
     return () => engine.destroy()
   }, [collection])
-  
+
   const create = useCallback(async (item: Omit<T, 'id' | 'version'>) => {
     await engineRef.current?.localChange({
       type: 'create',
@@ -1861,7 +1895,7 @@ function useSyncedCollection<T extends { id: string; version: number }>(
       data: item
     })
   }, [collection])
-  
+
   const update = useCallback(async (id: string, data: Partial<T>) => {
     await engineRef.current?.localChange({
       type: 'update',
@@ -1870,7 +1904,7 @@ function useSyncedCollection<T extends { id: string; version: number }>(
       data
     })
   }, [collection])
-  
+
   const remove = useCallback(async (id: string) => {
     await engineRef.current?.localChange({
       type: 'delete',
@@ -1878,24 +1912,24 @@ function useSyncedCollection<T extends { id: string; version: number }>(
       documentId: id
     })
   }, [collection])
-  
+
   return { data, syncState, create, update, remove }
 }
 
 // ==================== 使用示例 ====================
 function TodoApp() {
   const { data: todos, syncState, create, update, remove } = useSyncedCollection<Todo>('todos')
-  
+
   return (
     <div>
       {/* 同步状态指示器 */}
       <SyncStatus state={syncState} />
-      
+
       {/* 离线也能用 */}
       {todos.map(todo => (
         <div key={todo.id}>
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             checked={todo.done}
             onChange={() => update(todo.id, { done: !todo.done })}
           />
@@ -1903,7 +1937,7 @@ function TodoApp() {
           <button onClick={() => remove(todo.id)}>删除</button>
         </div>
       ))}
-      
+
       <button onClick={() => create({ text: 'New Todo', done: false })}>
         添加
       </button>
@@ -1918,7 +1952,7 @@ function SyncStatus({ state }: { state: SyncState }) {
     'offline': \`📴 离线 (\${state.pendingCount}条待同步)\`,
     'error': \`❌ 同步失败\`
   }[state.status]
-  
+
   return <span className="sync-status">{statusText}</span>
 }
 
@@ -1928,17 +1962,17 @@ function SyncStatus({ state }: { state: SyncState }) {
 // 3. 冲突解决，不丢数据
 // 4. 增量同步，省流量
 // 5. 最终一致性保证`,
-    designPattern: '离线优先 + CRDT + 增量同步'
+    designPattern: "离线优先 + CRDT + 增量同步",
   },
 
   // ==================== 领域场景篇 ====================
   {
-    id: 'seckill',
-    title: '秒杀系统前端设计',
-    subtitle: '高并发场景下的前端策略',
+    id: "seckill",
+    title: "秒杀系统前端设计",
+    subtitle: "高并发场景下的前端策略",
     difficulty: 5,
-    tags: ['倒计时同步', '请求队列', '预热'],
-    category: '电商领域',
+    tags: ["倒计时同步", "请求队列", "预热"],
+    category: "电商领域",
     problem: `秒杀是电商最具挑战的场景之一：
 
 **前端核心挑战：**
@@ -1960,7 +1994,7 @@ function SyncStatus({ state }: { state: SyncState }) {
 function SeckillPage() {
   const [countdown, setCountdown] = useState(0)
   const [canBuy, setCanBuy] = useState(false)
-  
+
   // 问题1: 用本地时间，用户可以改系统时间
   useEffect(() => {
     const targetTime = new Date('2024-01-01 00:00:00').getTime()
@@ -1975,7 +2009,7 @@ function SeckillPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [])
-  
+
   // 问题2: 直接发请求，没有排队、没有防刷
   const handleBuy = async () => {
     const result = await fetch('/api/seckill/buy', {
@@ -1988,7 +2022,7 @@ function SeckillPage() {
       alert('抢购失败')
     }
   }
-  
+
   return (
     <div>
       <div>倒计时: {countdown}秒</div>
@@ -2004,28 +2038,28 @@ function SeckillPage() {
 class TimeSyncService {
   private serverTimeOffset = 0  // 服务器时间 - 本地时间
   private syncInterval = 60000  // 每分钟同步一次
-  
+
   async init() {
     await this.sync()
     setInterval(() => this.sync(), this.syncInterval)
   }
-  
+
   private async sync() {
     const localBefore = Date.now()
-    const response = await fetch('/api/time', { 
+    const response = await fetch('/api/time', {
       headers: { 'Cache-Control': 'no-cache' }
     })
     const localAfter = Date.now()
-    
+
     const serverTime = await response.json().then(r => r.timestamp)
-    
+
     // 计算网络延迟，取中间值
     const latency = (localAfter - localBefore) / 2
     const estimatedServerTime = serverTime + latency
-    
+
     this.serverTimeOffset = estimatedServerTime - localBefore
   }
-  
+
   // 获取服务器时间
   getServerTime(): number {
     return Date.now() + this.serverTimeOffset
@@ -2033,7 +2067,7 @@ class TimeSyncService {
 }
 
 // ==================== 秒杀状态机 ====================
-type SeckillState = 
+type SeckillState =
   | { status: 'before'; startTime: number }
   | { status: 'countdown'; remaining: number }
   | { status: 'ready' }
@@ -2048,7 +2082,7 @@ class SeckillEngine {
   private token: string | null = null
   private state: SeckillState
   private listeners = new Set<(state: SeckillState) => void>()
-  
+
   constructor(
     private productId: string,
     private startTime: number
@@ -2056,26 +2090,26 @@ class SeckillEngine {
     this.timeSync = new TimeSyncService()
     this.state = { status: 'before', startTime }
   }
-  
+
   async init() {
     // 1. 同步时间
     await this.timeSync.init()
-    
+
     // 2. 预加载商品信息
     await this.preloadProductInfo()
-    
+
     // 3. 获取秒杀token（防刷）
     this.token = await this.getSeckillToken()
-    
+
     // 4. 开始倒计时
     this.startCountdown()
   }
-  
+
   private startCountdown() {
     const check = () => {
       const serverTime = this.timeSync.getServerTime()
       const remaining = this.startTime - serverTime
-      
+
       if (remaining > 0) {
         if (remaining <= 60000) {  // 最后1分钟
           this.updateState({ status: 'countdown', remaining: Math.ceil(remaining / 1000) })
@@ -2087,38 +2121,38 @@ class SeckillEngine {
         this.updateState({ status: 'ready' })
       }
     }
-    
+
     requestAnimationFrame(check)
   }
-  
+
   // 预加载
   private async preloadProductInfo() {
     // 提前加载商品详情、库存信息
     const response = await fetch(\`/api/seckill/preload/\${this.productId}\`)
     // 缓存到本地
   }
-  
+
   // 获取秒杀token
   private async getSeckillToken(): Promise<string> {
     const response = await fetch(\`/api/seckill/token/\${this.productId}\`)
     const { token } = await response.json()
     return token
   }
-  
+
   // 执行秒杀
   async seckill() {
     if (this.state.status !== 'ready') return
-    
+
     this.updateState({ status: 'processing', queuePosition: 0 })
-    
+
     try {
       // 1. 进入排队
       const queueResult = await this.enterQueue()
       this.updateState({ status: 'processing', queuePosition: queueResult.position })
-      
+
       // 2. 轮询排队状态
       const result = await this.pollQueueStatus(queueResult.ticketId)
-      
+
       if (result.status === 'success') {
         this.updateState({ status: 'success', orderId: result.orderId })
       } else if (result.status === 'soldout') {
@@ -2126,12 +2160,12 @@ class SeckillEngine {
       } else {
         this.updateState({ status: 'failed', reason: result.message })
       }
-      
+
     } catch (error) {
       this.updateState({ status: 'failed', reason: error.message })
     }
   }
-  
+
   private async enterQueue() {
     const response = await fetch('/api/seckill/queue', {
       method: 'POST',
@@ -2146,30 +2180,30 @@ class SeckillEngine {
     })
     return response.json()
   }
-  
+
   private async pollQueueStatus(ticketId: string) {
     while (true) {
       const response = await fetch(\`/api/seckill/status/\${ticketId}\`)
       const result = await response.json()
-      
+
       if (result.status !== 'waiting') {
         return result
       }
-      
-      this.updateState({ 
-        status: 'processing', 
-        queuePosition: result.position 
+
+      this.updateState({
+        status: 'processing',
+        queuePosition: result.position
       })
-      
+
       await delay(1000)  // 1秒轮询一次
     }
   }
-  
+
   private updateState(state: SeckillState) {
     this.state = state
     this.listeners.forEach(l => l(state))
   }
-  
+
   subscribe(listener: (state: SeckillState) => void) {
     this.listeners.add(listener)
     listener(this.state)  // 立即通知当前状态
@@ -2181,27 +2215,27 @@ class SeckillEngine {
 function useSeckill(productId: string, startTime: number) {
   const [state, setState] = useState<SeckillState>({ status: 'before', startTime })
   const engineRef = useRef<SeckillEngine>()
-  
+
   useEffect(() => {
     const engine = new SeckillEngine(productId, startTime)
     engine.init()
     engine.subscribe(setState)
     engineRef.current = engine
-    
+
     return () => engine.destroy()
   }, [productId, startTime])
-  
+
   const seckill = useCallback(() => {
     engineRef.current?.seckill()
   }, [])
-  
+
   return { state, seckill }
 }
 
 // ==================== 组件实现 ====================
 function SeckillPage({ productId, startTime }: { productId: string; startTime: number }) {
   const { state, seckill } = useSeckill(productId, startTime)
-  
+
   return (
     <div className="seckill-page">
       {/* 状态渲染 */}
@@ -2210,40 +2244,40 @@ function SeckillPage({ productId, startTime }: { productId: string; startTime: n
           活动即将开始
         </div>
       )}
-      
+
       {state.status === 'countdown' && (
         <div className="countdown imminent">
           <span>{Math.floor(state.remaining / 60)}</span>:
           <span>{state.remaining % 60}</span>
         </div>
       )}
-      
+
       {state.status === 'ready' && (
         <button className="seckill-btn ready" onClick={seckill}>
           立即抢购
         </button>
       )}
-      
+
       {state.status === 'processing' && (
         <div className="processing">
           <div className="spinner" />
           <div>排队中，前方还有 {state.queuePosition} 人</div>
         </div>
       )}
-      
+
       {state.status === 'success' && (
         <div className="result success">
           🎉 恭喜！抢购成功
           <a href={\`/order/\${state.orderId}\`}>查看订单</a>
         </div>
       )}
-      
+
       {state.status === 'failed' && (
         <div className="result failed">
           😢 {state.reason}
         </div>
       )}
-      
+
       {state.status === 'soldout' && (
         <div className="result soldout">
           商品已售罄
@@ -2259,15 +2293,15 @@ function SeckillPage({ productId, startTime }: { productId: string; startTime: n
 // 3. 排队机制，平滑流量
 // 4. 状态清晰，用户可感知
 // 5. 预加载，减少最后时刻请求`,
-    designPattern: '时间同步 + 排队系统 + 状态机'
+    designPattern: "时间同步 + 排队系统 + 状态机",
   },
   {
-    id: 'price-engine',
-    title: '价格计算引擎',
-    subtitle: '复杂优惠规则处理',
+    id: "price-engine",
+    title: "价格计算引擎",
+    subtitle: "复杂优惠规则处理",
     difficulty: 5,
-    tags: ['规则引擎', '策略模式', '责任链'],
-    category: '电商领域',
+    tags: ["规则引擎", "策略模式", "责任链"],
+    category: "电商领域",
     problem: `价格计算是电商最复杂的业务逻辑：
 
 **实际场景：**
@@ -2289,12 +2323,12 @@ function SeckillPage({ productId, startTime }: { productId: string; startTime: n
 
 function calculatePrice(items, coupons, user) {
   let total = 0
-  
+
   // 计算商品总价
   items.forEach(item => {
     total += item.price * item.quantity
   })
-  
+
   // 乱七八糟的 if-else
   if (coupons.type === 'discount') {
     total = total * (1 - coupons.value / 100)
@@ -2303,20 +2337,20 @@ function calculatePrice(items, coupons, user) {
       total = total - coupons.value
     }
   }
-  
+
   // 会员折扣
   if (user.level === 'gold') {
     total = total * 0.95
   } else if (user.level === 'diamond') {
     total = total * 0.9
   }
-  
+
   // 问题：
   // 1. 规则写死，运营改不了
   // 2. 叠加顺序混乱
   // 3. 精度问题
   // 4. 没法单元测试
-  
+
   return Math.round(total * 100) / 100
 }`,
     goodCode: `// ✅ 优雅设计：规则引擎 + 策略模式
@@ -2349,22 +2383,22 @@ interface DiscountDetail {
 // ==================== 规则引擎 ====================
 class PriceEngine {
   private rules: PriceRule[] = []
-  
+
   register(rule: PriceRule) {
     this.rules.push(rule)
     this.rules.sort((a, b) => a.priority - b.priority)
     return this
   }
-  
+
   calculate(ctx: PriceContext): PriceResult {
     const result: PriceResult = {
       originalPrice: this.sumOriginal(ctx.items),
       finalPrice: 0,
       discounts: []
     }
-    
+
     let currentPrice = result.originalPrice
-    
+
     for (const rule of this.rules) {
       if (rule.isApplicable(ctx, currentPrice)) {
         const discount = rule.apply(ctx, currentPrice)
@@ -2374,11 +2408,11 @@ class PriceEngine {
         }
       }
     }
-    
+
     result.finalPrice = Math.max(0, currentPrice)
     return result
   }
-  
+
   private sumOriginal(items: CartItem[]): Money {
     return items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   }
@@ -2398,20 +2432,20 @@ interface PriceRule {
 class SeckillPriceRule implements PriceRule {
   name = '秒杀价'
   priority = 10  // 最先执行
-  
+
   isApplicable(ctx: PriceContext) {
     return ctx.items.some(item => item.seckillPrice && this.isSeckillTime(ctx.timestamp))
   }
-  
+
   apply(ctx: PriceContext, currentPrice: Money): DiscountDetail {
     let discount = 0
-    
+
     for (const item of ctx.items) {
       if (item.seckillPrice && this.isSeckillTime(ctx.timestamp)) {
         discount += (item.price - item.seckillPrice) * item.quantity
       }
     }
-    
+
     return {
       type: 'seckill',
       name: '秒杀价',
@@ -2419,7 +2453,7 @@ class SeckillPriceRule implements PriceRule {
       rule: '秒杀商品特价'
     }
   }
-  
+
   private isSeckillTime(timestamp: number): boolean {
     // 判断是否在秒杀时间内
     return true
@@ -2430,22 +2464,22 @@ class SeckillPriceRule implements PriceRule {
 class MemberDiscountRule implements PriceRule {
   name = '会员折扣'
   priority = 50
-  
+
   private discounts: Record<string, number> = {
     'normal': 1,
     'silver': 0.98,
     'gold': 0.95,
     'diamond': 0.9
   }
-  
+
   isApplicable(ctx: PriceContext) {
     return ctx.user.level in this.discounts
   }
-  
+
   apply(ctx: PriceContext, currentPrice: Money): DiscountDetail {
     const rate = this.discounts[ctx.user.level]
     const discount = Math.floor(currentPrice * (1 - rate))
-    
+
     return {
       type: 'member',
       name: \`\${ctx.user.level}会员折扣\`,
@@ -2459,19 +2493,19 @@ class MemberDiscountRule implements PriceRule {
 class FullReductionRule implements PriceRule {
   name = '满减'
   priority = 60
-  
+
   constructor(private config: { threshold: Money; reduce: Money }[]) {}
-  
+
   isApplicable(ctx: PriceContext, currentPrice: Money) {
     return this.config.some(c => currentPrice >= c.threshold)
   }
-  
+
   apply(ctx: PriceContext, currentPrice: Money): DiscountDetail {
     // 找到适用的最大满减
     const applicable = this.config
       .filter(c => currentPrice >= c.threshold)
       .sort((a, b) => b.threshold - a.threshold)[0]
-    
+
     return {
       type: 'full-reduction',
       name: '满减优惠',
@@ -2485,21 +2519,21 @@ class FullReductionRule implements PriceRule {
 class CouponRule implements PriceRule {
   name = '优惠券'
   priority = 70
-  
+
   isApplicable(ctx: PriceContext) {
     return ctx.coupons.length > 0
   }
-  
+
   apply(ctx: PriceContext, currentPrice: Money): DiscountDetail {
     // 选择最优优惠券
     const bestCoupon = this.selectBestCoupon(ctx.coupons, currentPrice)
-    
+
     if (!bestCoupon) {
       return { type: 'coupon', name: '', amount: 0, rule: '' }
     }
-    
+
     let discount = 0
-    
+
     switch (bestCoupon.type) {
       case 'reduce':
         if (currentPrice >= bestCoupon.threshold) {
@@ -2513,31 +2547,31 @@ class CouponRule implements PriceRule {
         discount = bestCoupon.value
         break
     }
-    
+
     return {
       type: 'coupon',
       name: bestCoupon.name,
       amount: discount,
-      rule: bestCoupon.type === 'discount' 
-        ? \`\${bestCoupon.value}折\` 
+      rule: bestCoupon.type === 'discount'
+        ? \`\${bestCoupon.value}折\`
         : \`减免\${bestCoupon.value / 100}元\`
     }
   }
-  
+
   private selectBestCoupon(coupons: Coupon[], price: Money): Coupon | null {
     return coupons
       .filter(c => this.canUse(c, price))
       .map(c => ({ coupon: c, value: this.calculateValue(c, price) }))
       .sort((a, b) => b.value - a.value)[0]?.coupon || null
   }
-  
+
   private canUse(coupon: Coupon, price: Money): boolean {
     if (coupon.type === 'reduce') {
       return price >= coupon.threshold
     }
     return true
   }
-  
+
   private calculateValue(coupon: Coupon, price: Money): Money {
     if (coupon.type === 'discount') {
       return Math.floor(price * (1 - coupon.value / 10))
@@ -2562,7 +2596,7 @@ function usePriceCalculator() {
   const calculate = useCallback((ctx: PriceContext): PriceResult => {
     return priceEngine.calculate(ctx)
   }, [])
-  
+
   return { calculate }
 }
 
@@ -2570,7 +2604,7 @@ function usePriceCalculator() {
 function CartSummary() {
   const { items, user, coupons } = useCart()
   const { calculate } = usePriceCalculator()
-  
+
   const result = useMemo(() => calculate({
     items,
     user,
@@ -2579,20 +2613,20 @@ function CartSummary() {
     region: 'CN',
     timestamp: Date.now()
   }), [items, user, coupons, calculate])
-  
+
   return (
     <div className="cart-summary">
       <div className="original-price">
         商品总额: ¥{(result.originalPrice / 100).toFixed(2)}
       </div>
-      
+
       {result.discounts.map((discount, i) => (
         <div key={i} className="discount-item">
           <span>{discount.name}</span>
           <span>-¥{(discount.amount / 100).toFixed(2)}</span>
         </div>
       ))}
-      
+
       <div className="final-price">
         应付: ¥{(result.finalPrice / 100).toFixed(2)}
       </div>
@@ -2613,7 +2647,7 @@ const ruleConfigs = [
 // 动态创建引擎
 function createEngineFromConfig(configs: any[]) {
   const engine = new PriceEngine()
-  
+
   for (const config of configs) {
     switch (config.type) {
       case 'seckill':
@@ -2625,7 +2659,7 @@ function createEngineFromConfig(configs: any[]) {
       // ...
     }
   }
-  
+
   return engine
 }
 
@@ -2635,15 +2669,15 @@ function createEngineFromConfig(configs: any[]) {
 // 3. 精度正确（分为单位）
 // 4. 易于扩展新规则
 // 5. 每个规则可独立测试`,
-    designPattern: '规则引擎 + 策略模式 + 责任链'
+    designPattern: "规则引擎 + 策略模式 + 责任链",
   },
   {
-    id: 'realtime-data',
-    title: '实时数据流处理',
-    subtitle: 'WebSocket/行情/监控',
+    id: "realtime-data",
+    title: "实时数据流处理",
+    subtitle: "WebSocket/行情/监控",
     difficulty: 5,
-    tags: ['WebSocket', '心跳检测', '增量更新'],
-    category: '金融领域',
+    tags: ["WebSocket", "心跳检测", "增量更新"],
+    category: "金融领域",
     problem: `实时数据是金融/监控场景的核心：
 
 **实际场景：**
@@ -2665,23 +2699,23 @@ function createEngineFromConfig(configs: any[]) {
 
 function StockPage() {
   const [prices, setPrices] = useState({})
-  
+
   useEffect(() => {
     const ws = new WebSocket('wss://api.example.com/stock')
-    
+
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       // 直接更新，没有考虑性能
       setPrices(prev => ({ ...prev, [data.symbol]: data.price }))
     }
-    
+
     // 没有心跳，不知道连接是否存活
     // 没有断线重连
     // 没有错误处理
-    
+
     return () => ws.close()
   }, [])
-  
+
   return (
     <div>
       {Object.entries(prices).map(([symbol, price]) => (
@@ -2704,17 +2738,17 @@ class WebSocketManager {
   private messageQueue: any[] = []  // 断线时缓存消息
   private listeners = new Map<string, Set<Function>>()
   private status: 'connecting' | 'connected' | 'disconnecting' | 'disconnected' = 'disconnected'
-  
+
   constructor(url: string) {
     this.url = url
   }
-  
+
   connect() {
     if (this.ws) return
-    
+
     this.status = 'connecting'
     this.ws = new WebSocket(this.url)
-    
+
     this.ws.onopen = () => {
       this.status = 'connected'
       this.reconnectAttempts = 0
@@ -2722,46 +2756,46 @@ class WebSocketManager {
       this.flushMessageQueue()
       this.emit('connected', {})
     }
-    
+
     this.ws.onmessage = (e) => {
       const message = JSON.parse(e.data)
-      
+
       // 处理心跳响应
       if (message.type === 'pong') {
         this.resetHeartbeatTimeout()
         return
       }
-      
+
       // 分发消息
       this.emit(message.type, message.data)
       this.emit('message', message)
     }
-    
+
     this.ws.onclose = (e) => {
       this.status = 'disconnected'
       this.stopHeartbeat()
       this.ws = null
-      
+
       // 非主动关闭，尝试重连
       if (e.code !== 1000) {
         this.scheduleReconnect()
       }
-      
+
       this.emit('disconnected', { code: e.code, reason: e.reason })
     }
-    
+
     this.ws.onerror = (error) => {
       this.emit('error', error)
     }
   }
-  
+
   disconnect() {
     this.status = 'disconnecting'
     this.stopHeartbeat()
     this.ws?.close(1000, 'Client disconnect')
     this.ws = null
   }
-  
+
   // 发送消息
   send(message: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
@@ -2771,23 +2805,23 @@ class WebSocketManager {
       this.messageQueue.push(message)
     }
   }
-  
+
   // 订阅
   subscribe<T>(event: string, handler: (data: T) => void) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set())
     }
     this.listeners.get(event)!.add(handler)
-    
+
     return () => {
       this.listeners.get(event)?.delete(handler)
     }
   }
-  
+
   private emit(event: string, data: any) {
     this.listeners.get(event)?.forEach(handler => handler(data))
   }
-  
+
   // 心跳机制
   private startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
@@ -2797,7 +2831,7 @@ class WebSocketManager {
       }
     }, 30000)  // 30秒心跳
   }
-  
+
   private stopHeartbeat() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval)
@@ -2808,7 +2842,7 @@ class WebSocketManager {
       this.heartbeatTimeout = null
     }
   }
-  
+
   private startHeartbeatTimeout() {
     this.heartbeatTimeout = setTimeout(() => {
       // 心跳超时，重连
@@ -2816,30 +2850,30 @@ class WebSocketManager {
       this.scheduleReconnect()
     }, 10000)  // 10秒超时
   }
-  
+
   private resetHeartbeatTimeout() {
     if (this.heartbeatTimeout) {
       clearTimeout(this.heartbeatTimeout)
       this.heartbeatTimeout = null
     }
   }
-  
+
   // 重连机制
   private scheduleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.emit('reconnect_failed', {})
       return
     }
-    
+
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts)
     this.reconnectAttempts++
-    
+
     setTimeout(() => {
       this.emit('reconnecting', { attempt: this.reconnectAttempts })
       this.connect()
     }, delay)
   }
-  
+
   private flushMessageQueue() {
     while (this.messageQueue.length > 0 && this.ws?.readyState === WebSocket.OPEN) {
       const message = this.messageQueue.shift()!
@@ -2855,27 +2889,27 @@ class DataStreamProcessor<T> {
   private maxBatchSize = 100   // 每批最多100条
   private handler: (items: T[]) => void
   private timer: NodeJS.Timeout | null = null
-  
+
   constructor(handler: (items: T[]) => void) {
     this.handler = handler
   }
-  
+
   push(item: T) {
     this.buffer.push(item)
-    
+
     if (this.buffer.length >= this.maxBatchSize) {
       this.flush()
     } else if (!this.timer) {
       this.timer = setTimeout(() => this.flush(), this.flushInterval)
     }
   }
-  
+
   private flush() {
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
     }
-    
+
     if (this.buffer.length > 0) {
       const items = this.buffer
       this.buffer = []
@@ -2887,7 +2921,7 @@ class DataStreamProcessor<T> {
 // ==================== 增量更新 ====================
 class IncrementalUpdater {
   private state: Map<string, any> = new Map()
-  
+
   // 应用增量更新
   apply(updates: Array<{ id: string; changes: Partial<any> }>) {
     for (const update of updates) {
@@ -2896,25 +2930,25 @@ class IncrementalUpdater {
     }
     return this.getState()
   }
-  
+
   getState() {
     return Object.fromEntries(this.state)
   }
-  
+
   // 计算 diff
   static diff(oldState: Record<string, any>, newState: Record<string, any>) {
     const changes: Array<{ id: string; changes: any }> = []
-    
+
     for (const [id, newValue] of Object.entries(newState)) {
       const oldValue = oldState[id]
       if (!oldValue || !this.deepEqual(oldValue, newValue)) {
         changes.push({ id, changes: newValue })
       }
     }
-    
+
     return changes
   }
-  
+
   private static deepEqual(a: any, b: any): boolean {
     return JSON.stringify(a) === JSON.stringify(b)
   }
@@ -2925,28 +2959,28 @@ function useWebSocket<T = any>(url: string) {
   const managerRef = useRef<WebSocketManager>()
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
   const [lastMessage, setLastMessage] = useState<T | null>(null)
-  
+
   useEffect(() => {
     const manager = new WebSocketManager(url)
     managerRef.current = manager
-    
+
     manager.subscribe('connected', () => setStatus('connected'))
     manager.subscribe('disconnected', () => setStatus('disconnected'))
     manager.subscribe('message', (msg: T) => setLastMessage(msg))
-    
+
     manager.connect()
-    
+
     return () => manager.disconnect()
   }, [url])
-  
+
   const send = useCallback((message: any) => {
     managerRef.current?.send(message)
   }, [])
-  
+
   const subscribe = useCallback((event: string, handler: Function) => {
     return managerRef.current?.subscribe(event, handler)
   }, [])
-  
+
   return { status, lastMessage, send, subscribe }
 }
 
@@ -2954,7 +2988,7 @@ function useWebSocket<T = any>(url: string) {
 function StockQuotes({ symbols }: { symbols: string[] }) {
   const [quotes, setQuotes] = useState<Record<string, Quote>>({})
   const processorRef = useRef<DataStreamProcessor<QuoteUpdate>>()
-  
+
   // 批量更新处理
   useEffect(() => {
     processorRef.current = new DataStreamProcessor((updates) => {
@@ -2967,34 +3001,34 @@ function StockQuotes({ symbols }: { symbols: string[] }) {
       })
     })
   }, [])
-  
+
   const { status, subscribe } = useWebSocket('wss://api.example.com/stock')
-  
+
   useEffect(() => {
     if (status !== 'connected') return
-    
+
     // 订阅行情
-    const unsubscribes = symbols.map(symbol => 
+    const unsubscribes = symbols.map(symbol =>
       subscribe('quote', (data: QuoteUpdate) => {
         if (data.symbol === symbol) {
           processorRef.current?.push(data)
         }
       })
     )
-    
+
     return () => unsubscribes.forEach(unsub => unsub?.())
   }, [status, symbols, subscribe])
-  
+
   return (
     <div>
       <div className="status">
         {status === 'connected' ? '🟢 已连接' : '🔴 断开'}
       </div>
-      
+
       {symbols.map(symbol => {
         const quote = quotes[symbol]
         if (!quote) return null
-        
+
         return (
           <div key={symbol} className="quote">
             <span className="symbol">{symbol}</span>
@@ -3015,15 +3049,15 @@ function StockQuotes({ symbols }: { symbols: string[] }) {
 // 3. 批量更新优化性能
 // 4. 增量更新减少传输
 // 5. 消息队列保证不丢`,
-    designPattern: '心跳检测 + 断线重连 + 批量更新'
+    designPattern: "心跳检测 + 断线重连 + 批量更新",
   },
   {
-    id: 'transaction',
-    title: '交易流程编排',
-    subtitle: '多步骤验证与状态机',
+    id: "transaction",
+    title: "交易流程编排",
+    subtitle: "多步骤验证与状态机",
     difficulty: 5,
-    tags: ['交易状态机', '幂等性', '分布式锁'],
-    category: '金融领域',
+    tags: ["交易状态机", "幂等性", "分布式锁"],
+    category: "金融领域",
     problem: `交易是金融系统最核心的功能：
 
 **实际场景：**
@@ -3045,13 +3079,13 @@ function StockQuotes({ symbols }: { symbols: string[] }) {
 async function pay(orderId: string) {
   // 问题1: 没有幂等性，重复点击会重复扣款
   const order = await fetchOrder(orderId)
-  
+
   // 问题2: 这些操作不是原子的
   await lockInventory(order.items)
   await deductBalance(order.userId, order.amount)
   await updateOrderStatus(orderId, 'paid')
   await sendNotification(order.userId)
-  
+
   // 问题3: 任何一步失败，没有回滚
   // 问题4: 超时没处理
   // 问题5: 状态无法追踪
@@ -3059,7 +3093,7 @@ async function pay(orderId: string) {
     goodCode: `// ✅ 优雅设计：交易编排引擎
 
 // ==================== 交易状态机 ====================
-type TransactionState = 
+type TransactionState =
   | 'INIT'
   | 'VALIDATING'
   | 'RISK_CHECKING'
@@ -3071,7 +3105,7 @@ type TransactionState =
   | 'ROLLING_BACK'
   | 'ROLLED_BACK'
 
-type TransactionEvent = 
+type TransactionEvent =
   | { type: 'START' }
   | { type: 'VALIDATE_SUCCESS' }
   | { type: 'VALIDATE_FAILED'; reason: string }
@@ -3114,11 +3148,11 @@ class TransactionOrchestrator {
   private stateMachine: StateMachine<TransactionState, TransactionEvent>
   private lockManager: DistributedLockManager
   private transactionRepo: TransactionRepository
-  
+
   constructor() {
     this.stateMachine = this.createStateMachine()
   }
-  
+
   private createStateMachine() {
     return new StateMachine<TransactionState, TransactionEvent>({
       initial: 'INIT',
@@ -3169,76 +3203,76 @@ class TransactionOrchestrator {
       }
     })
   }
-  
+
   // 执行交易（幂等）
   async execute(params: TransactionParams): Promise<TransactionResult> {
     const idempotencyKey = params.idempotencyKey || generateId()
-    
+
     // 1. 幂等检查
     const existing = await this.transactionRepo.findByIdempotencyKey(idempotencyKey)
     if (existing) {
       return this.handleExistingTransaction(existing)
     }
-    
+
     // 2. 分布式锁
     const lock = await this.lockManager.acquire(\`tx:\${params.userId}\`, 30000)
-    
+
     try {
       // 3. 创建交易记录
       const ctx = await this.createTransaction(params, idempotencyKey)
-      
+
       // 4. 执行状态机
       await this.stateMachine.start(ctx)
-      
+
       return {
         transactionId: ctx.transactionId,
         status: ctx.state,
         success: ctx.state === 'SUCCESS'
       }
-      
+
     } finally {
       await lock.release()
     }
   }
-  
+
   // 步骤实现
   private async validate(ctx: TransactionContext) {
     this.recordStep(ctx, 'validate', 'pending')
-    
+
     try {
       const order = await this.orderRepo.findById(ctx.orderId)
-      
+
       if (!order) {
         throw new Error('订单不存在')
       }
-      
+
       if (order.status !== 'pending') {
         throw new Error('订单状态不正确')
       }
-      
+
       if (order.expiredAt < Date.now()) {
         throw new Error('订单已过期')
       }
-      
+
       this.recordStep(ctx, 'validate', 'success')
       this.stateMachine.send({ type: 'VALIDATE_SUCCESS' })
-      
+
     } catch (error) {
       this.recordStep(ctx, 'validate', 'failed', error.message)
       this.stateMachine.send({ type: 'VALIDATE_FAILED', reason: error.message })
     }
   }
-  
+
   private async riskCheck(ctx: TransactionContext) {
     this.recordStep(ctx, 'riskCheck', 'pending')
-    
+
     try {
       const result = await this.riskService.check({
         userId: ctx.userId,
         amount: ctx.amount,
         type: 'payment'
       })
-      
+
       if (result.pass) {
         this.recordStep(ctx, 'riskCheck', 'success')
         this.stateMachine.send({ type: 'RISK_PASS' })
@@ -3246,49 +3280,49 @@ class TransactionOrchestrator {
         this.recordStep(ctx, 'riskCheck', 'failed', result.reason)
         this.stateMachine.send({ type: 'RISK_REJECT', reason: result.reason })
       }
-      
+
     } catch (error) {
       this.recordStep(ctx, 'riskCheck', 'failed', error.message)
       this.stateMachine.send({ type: 'RISK_REJECT', reason: error.message })
     }
   }
-  
+
   private async lockResources(ctx: TransactionContext) {
     this.recordStep(ctx, 'lockResources', 'pending')
-    
+
     try {
       const order = await this.orderRepo.findById(ctx.orderId)
-      
+
       // 锁定库存
       for (const item of order.items) {
         await this.inventoryService.lock(item.skuId, item.quantity, ctx.transactionId)
       }
-      
+
       // 记录补偿操作
       this.recordStep(ctx, 'lockResources', 'success', undefined, async () => {
         for (const item of order.items) {
           await this.inventoryService.unlock(item.skuId, ctx.transactionId)
         }
       })
-      
+
       this.stateMachine.send({ type: 'LOCK_SUCCESS' })
-      
+
     } catch (error) {
       this.recordStep(ctx, 'lockResources', 'failed', error.message)
       this.stateMachine.send({ type: 'LOCK_FAILED', reason: error.message })
     }
   }
-  
+
   private async deduct(ctx: TransactionContext) {
     this.recordStep(ctx, 'deduct', 'pending')
-    
+
     try {
       await this.paymentService.deduct({
         userId: ctx.userId,
         amount: ctx.amount,
         transactionId: ctx.transactionId
       })
-      
+
       // 记录补偿操作
       this.recordStep(ctx, 'deduct', 'success', undefined, async () => {
         await this.paymentService.refund({
@@ -3297,43 +3331,43 @@ class TransactionOrchestrator {
           transactionId: ctx.transactionId
         })
       })
-      
+
       this.stateMachine.send({ type: 'DEDUCT_SUCCESS' })
-      
+
     } catch (error) {
       this.recordStep(ctx, 'deduct', 'failed', error.message)
       this.stateMachine.send({ type: 'DEDUCT_FAILED', reason: error.message })
     }
   }
-  
+
   private async confirm(ctx: TransactionContext) {
     this.recordStep(ctx, 'confirm', 'pending')
-    
+
     try {
       // 更新订单状态
       await this.orderRepo.updateStatus(ctx.orderId, 'paid')
-      
+
       // 发送通知
       await this.notificationService.send(ctx.userId, {
         type: 'payment_success',
         orderId: ctx.orderId,
         amount: ctx.amount
       })
-      
+
       this.recordStep(ctx, 'confirm', 'success')
       this.stateMachine.send({ type: 'CONFIRM_SUCCESS' })
-      
+
     } catch (error) {
       this.recordStep(ctx, 'confirm', 'failed', error.message)
       // 确认失败也需要回滚
       this.stateMachine.send({ type: 'TIMEOUT' })
     }
   }
-  
+
   // 回滚
   private async rollback(ctx: TransactionContext) {
     this.recordStep(ctx, 'rollback', 'pending')
-    
+
     try {
       // 按逆序执行补偿操作
       for (let i = ctx.steps.length - 1; i >= 0; i--) {
@@ -3342,10 +3376,10 @@ class TransactionOrchestrator {
           await step.compensation()
         }
       }
-      
+
       this.recordStep(ctx, 'rollback', 'success')
       this.stateMachine.send({ type: 'ROLLBACK_COMPLETE' })
-      
+
     } catch (error) {
       // 回滚失败，需要人工介入
       this.recordStep(ctx, 'rollback', 'failed', error.message)
@@ -3356,10 +3390,10 @@ class TransactionOrchestrator {
       })
     }
   }
-  
+
   private recordStep(
-    ctx: TransactionContext, 
-    step: string, 
+    ctx: TransactionContext,
+    step: string,
     status: StepRecord['status'],
     error?: string,
     compensation?: () => Promise<void>
@@ -3380,17 +3414,17 @@ class TransactionOrchestrator {
         compensation
       })
     }
-    
+
     this.transactionRepo.save(ctx)
   }
-  
+
   // 处理已存在的交易（幂等）
   private async handleExistingTransaction(existing: TransactionContext): Promise<TransactionResult> {
     // 如果还在进行中，等待结果
     if (!['SUCCESS', 'FAILED', 'ROLLED_BACK'].includes(existing.state)) {
       return this.waitForCompletion(existing.transactionId)
     }
-    
+
     return {
       transactionId: existing.transactionId,
       status: existing.state,
@@ -3403,17 +3437,17 @@ class TransactionOrchestrator {
 function useTransaction() {
   const [progress, setProgress] = useState<TransactionContext | null>(null)
   const orchestratorRef = useRef<TransactionOrchestrator>()
-  
+
   useEffect(() => {
     orchestratorRef.current = new TransactionOrchestrator()
   }, [])
-  
+
   const execute = useCallback(async (params: TransactionParams) => {
     // 订阅进度更新
     const unsubscribe = orchestratorRef.current?.subscribe(params.transactionId, (ctx) => {
       setProgress(ctx)
     })
-    
+
     try {
       const result = await orchestratorRef.current?.execute(params)
       return result
@@ -3421,7 +3455,7 @@ function useTransaction() {
       unsubscribe?.()
     }
   }, [])
-  
+
   return { progress, execute }
 }
 
@@ -3429,20 +3463,20 @@ function useTransaction() {
 function PaymentPage({ order }: { order: Order }) {
   const { progress, execute } = useTransaction()
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle')
-  
+
   const handlePay = async () => {
     setStatus('processing')
-    
+
     const result = await execute({
       orderId: order.id,
       userId: order.userId,
       amount: order.amount,
       idempotencyKey: \`pay_\${order.id}_\${Date.now()}\`
     })
-    
+
     setStatus(result?.success ? 'success' : 'failed')
   }
-  
+
   return (
     <div className="payment-page">
       {/* 进度展示 */}
@@ -3458,10 +3492,10 @@ function PaymentPage({ order }: { order: Order }) {
           ))}
         </div>
       )}
-      
+
       {/* 操作按钮 */}
-      <button 
-        onClick={handlePay} 
+      <button
+        onClick={handlePay}
         disabled={status === 'processing'}
       >
         {status === 'processing' ? '处理中...' : '确认支付'}
@@ -3476,17 +3510,17 @@ function PaymentPage({ order }: { order: Order }) {
 // 3. 分布式锁防止并发
 // 4. 补偿机制保证回滚
 // 5. 进度可追踪`,
-    designPattern: '交易状态机 + 补偿机制 + 幂等性设计'
+    designPattern: "交易状态机 + 补偿机制 + 幂等性设计",
   },
 
   // ==================== 第五批：更多架构模式 ====================
   {
-    id: 'eventbus',
-    title: '事件总线与发布订阅',
-    subtitle: '组件解耦的核心手段',
+    id: "eventbus",
+    title: "事件总线与发布订阅",
+    subtitle: "组件解耦的核心手段",
     difficulty: 4,
-    tags: ['发布订阅', '事件总线', '观察者模式'],
-    category: '架构模式',
+    tags: ["发布订阅", "事件总线", "观察者模式"],
+    category: "架构模式",
     problem: `组件间通信是前端最常见的问题：
 
 **实际场景：**
@@ -3556,18 +3590,18 @@ class EventBus {
   private events = new Map<string, Set<EventHandler>>()
   private onceEvents = new Map<string, Set<EventHandler>>()
   private history = new Map<string, any[]>()  // 事件历史（用于粘性事件）
-  
+
   // 订阅事件
   on<T>(event: string, handler: EventHandler<T>) {
     if (!this.events.has(event)) {
       this.events.set(event, new Set())
     }
     this.events.get(event)!.add(handler)
-    
+
     // 返回取消订阅函数
     return () => this.off(event, handler)
   }
-  
+
   // 一次性订阅
   once<T>(event: string, handler: EventHandler<T>) {
     if (!this.onceEvents.has(event)) {
@@ -3576,44 +3610,44 @@ class EventBus {
     this.onceEvents.get(event)!.add(handler)
     return () => this.onceEvents.get(event)?.delete(handler)
   }
-  
+
   // 发布事件
   emit<T>(event: string, data: T) {
     // 触发普通订阅
     this.events.get(event)?.forEach(handler => handler(data))
-    
+
     // 触发一次性订阅
     const onceHandlers = this.onceEvents.get(event)
     if (onceHandlers) {
       onceHandlers.forEach(handler => handler(data))
       this.onceEvents.delete(event)
     }
-    
+
     // 记录历史
     if (!this.history.has(event)) {
       this.history.set(event, [])
     }
     this.history.get(event)!.push(data)
   }
-  
+
   // 粘性事件：新订阅者立即收到最后一次事件
   onSticky<T>(event: string, handler: EventHandler<T>) {
     const unsubscribe = this.on(event, handler)
-    
+
     // 立即触发最后一次事件
     const history = this.history.get(event)
     if (history && history.length > 0) {
       handler(history[history.length - 1])
     }
-    
+
     return unsubscribe
   }
-  
+
   // 取消订阅
   off(event: string, handler: EventHandler) {
     this.events.get(event)?.delete(handler)
   }
-  
+
   // 清空事件
   clear(event?: string) {
     if (event) {
@@ -3646,7 +3680,7 @@ function emit<K extends keyof AppEvents>(event: K, data: AppEvents[K]) {
 }
 
 function on<K extends keyof AppEvents>(
-  event: K, 
+  event: K,
   handler: (data: AppEvents[K]) => void
 ) {
   return globalBus.on(event, handler)
@@ -3673,28 +3707,28 @@ function useEventEmitter() {
 function LoginForm() {
   const handleLogin = async (credentials) => {
     const user = await login(credentials)
-    
+
     // 发布登录事件
     emit('user:login', { userId: user.id, name: user.name })
   }
-  
+
   return <form>...</form>
 }
 
 // 导航栏（在应用任意位置）
 function NavBar() {
   const [userName, setUserName] = useState('')
-  
+
   // 订阅登录事件
   useEventBus('user:login', (data) => {
     setUserName(data.name)
   }, [])
-  
+
   // 订阅登出事件
   useEventBus('user:logout', () => {
     setUserName('')
   }, [])
-  
+
   return (
     <nav>
       {userName && <span>欢迎, {userName}</span>}
@@ -3705,28 +3739,28 @@ function NavBar() {
 // 购物车图标（完全解耦）
 function CartIcon() {
   const [count, setCount] = useState(0)
-  
+
   useEventBus('cart:update', (data) => {
     setCount(data.itemCount)
   }, [])
-  
+
   return <Badge count={count}>🛒</Badge>
 }
 
 // 通知组件（全局单例）
 function NotificationProvider() {
   const [notifications, setNotifications] = useState([])
-  
+
   useEventBus('notification:show', (data) => {
     const id = Date.now()
     setNotifications(prev => [...prev, { ...data, id }])
-    
+
     // 3秒后自动消失
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id))
     }, 3000)
   }, [])
-  
+
   return (
     <div className="notification-container">
       {notifications.map(n => (
@@ -3741,7 +3775,7 @@ function NotificationProvider() {
 // 任意组件都可以发通知
 function SomeComponent() {
   const { emit } = useEventEmitter()
-  
+
   const handleSave = async () => {
     try {
       await saveData()
@@ -3760,7 +3794,7 @@ class PaymentModule {
     // 监听订单创建事件
     this.bus.on('order:created', this.handleOrderCreated)
   }
-  
+
   private handleOrderCreated = (order) => {
     // 处理支付
   }
@@ -3771,7 +3805,7 @@ class InventoryModule {
   constructor(private bus: EventBus) {
     this.bus.on('order:paid', this.handleOrderPaid)
   }
-  
+
   private handleOrderPaid = (order) => {
     // 扣减库存
   }
@@ -3786,15 +3820,15 @@ class InventoryModule {
 // 3. 支持 React Hook 风格
 // 4. 模块间松耦合通信
 // 5. 易于扩展新的事件监听者`,
-    designPattern: '发布订阅模式 + 观察者模式'
+    designPattern: "发布订阅模式 + 观察者模式",
   },
   {
-    id: 'strategy',
-    title: '策略模式实战',
-    subtitle: '消除 if-else 地狱',
+    id: "strategy",
+    title: "策略模式实战",
+    subtitle: "消除 if-else 地狱",
     difficulty: 4,
-    tags: ['策略模式', '开放封闭', '多态'],
-    category: '架构模式',
+    tags: ["策略模式", "开放封闭", "多态"],
+    category: "架构模式",
     problem: `策略模式是最实用但最被低估的模式：
 
 **实际场景：**
@@ -3874,7 +3908,7 @@ interface DiscountStrategy {
 const vipStrategy: DiscountStrategy = {
   id: 'vip',
   name: '会员折扣',
-  
+
   calculate(user, order) {
     const rates = {
       'gold': 0.8,
@@ -3883,7 +3917,7 @@ const vipStrategy: DiscountStrategy = {
     }
     return order.amount * (1 - rates[user.level] || 1)
   },
-  
+
   isApplicable(user) {
     return ['gold', 'silver', 'bronze'].includes(user.level)
   }
@@ -3893,7 +3927,7 @@ const vipStrategy: DiscountStrategy = {
 const couponStrategy: DiscountStrategy = {
   id: 'coupon',
   name: '优惠券',
-  
+
   calculate(user, order) {
     const thresholds = [
       { min: 100, discount: 20 },
@@ -3903,7 +3937,7 @@ const couponStrategy: DiscountStrategy = {
     const matched = thresholds.find(t => order.amount >= t.min)
     return matched?.discount || 0
   },
-  
+
   isApplicable(user, order) {
     return order.amount >= 50
   }
@@ -3913,11 +3947,11 @@ const couponStrategy: DiscountStrategy = {
 const pointsStrategy: DiscountStrategy = {
   id: 'points',
   name: '积分抵扣',
-  
+
   calculate(user) {
     return Math.min(user.points * 0.01, 50)  // 最多抵扣50元
   },
-  
+
   isApplicable(user) {
     return user.points >= 100
   }
@@ -3927,11 +3961,11 @@ const pointsStrategy: DiscountStrategy = {
 const newUserStrategy: DiscountStrategy = {
   id: 'newuser',
   name: '新用户首单',
-  
+
   calculate(user, order) {
     return Math.min(order.amount * 0.2, 30)  // 8折，最多减30
   },
-  
+
   isApplicable(user) {
     return user.orderCount === 0
   }
@@ -3940,20 +3974,20 @@ const newUserStrategy: DiscountStrategy = {
 // ==================== 策略注册表 ====================
 class StrategyRegistry<T> {
   private strategies = new Map<string, T>()
-  
+
   register(strategy: T & { id: string }) {
     this.strategies.set(strategy.id, strategy)
     return this
   }
-  
+
   get(id: string): T | undefined {
     return this.strategies.get(id)
   }
-  
+
   getAll(): T[] {
     return Array.from(this.strategies.values())
   }
-  
+
   // 找出所有适用的策略
   getApplicable(context: any, predicate: (s: T, ctx: any) => boolean): T[] {
     return this.getAll().filter(s => predicate(s, context))
@@ -3963,7 +3997,7 @@ class StrategyRegistry<T> {
 // ==================== 折扣计算引擎 ====================
 class DiscountEngine {
   private registry = new StrategyRegistry<DiscountStrategy>()
-  
+
   constructor() {
     // 注册所有策略
     this.registry
@@ -3972,7 +4006,7 @@ class DiscountEngine {
       .register(pointsStrategy)
       .register(newUserStrategy)
   }
-  
+
   // 计算单个折扣
   calculate(strategyId: string, user: User, order: Order): number {
     const strategy = this.registry.get(strategyId)
@@ -3981,7 +4015,7 @@ class DiscountEngine {
     }
     return strategy.calculate(user, order)
   }
-  
+
   // 计算所有可用折扣
   calculateAll(user: User, order: Order): Array<{ id: string; name: string; amount: number }> {
     return this.registry
@@ -3995,7 +4029,7 @@ class DiscountEngine {
         amount: s.calculate(user, order)
       }))
   }
-  
+
   // 动态注册新策略（插件化）
   registerStrategy(strategy: DiscountStrategy) {
     this.registry.register(strategy)
@@ -4005,45 +4039,45 @@ class DiscountEngine {
 // ==================== React Hook ====================
 function useDiscountEngine() {
   const engine = useMemo(() => new DiscountEngine(), [])
-  
+
   const calculateDiscount = useCallback((strategyId: string, user: User, order: Order) => {
     return engine.calculate(strategyId, user, order)
   }, [engine])
-  
+
   const getAvailableDiscounts = useCallback((user: User, order: Order) => {
     return engine.calculateAll(user, order)
   }, [engine])
-  
+
   return { calculateDiscount, getAvailableDiscounts }
 }
 
 // ==================== 使用示例 ====================
 function OrderSummary({ user, order }: { user: User; order: Order }) {
   const { getAvailableDiscounts } = useDiscountEngine()
-  
-  const discounts = useMemo(() => 
+
+  const discounts = useMemo(() =>
     getAvailableDiscounts(user, order),
     [user, order, getAvailableDiscounts]
   )
-  
+
   const [selectedId, setSelectedId] = useState<string>()
-  
+
   const selected = discounts.find(d => d.id === selectedId)
-  
+
   return (
     <div>
       <h3>可用优惠</h3>
       {discounts.map(d => (
         <label key={d.id}>
-          <input 
-            type="radio" 
+          <input
+            type="radio"
             checked={selectedId === d.id}
             onChange={() => setSelectedId(d.id)}
           />
           {d.name}: -¥{d.amount.toFixed(2)}
         </label>
       ))}
-      
+
       <div className="total">
         应付: ¥{(order.amount - (selected?.amount || 0)).toFixed(2)}
       </div>
@@ -4069,11 +4103,11 @@ function createFestivalStrategy(config) {
   return {
     id: config.id,
     name: config.name,
-    
+
     calculate(user, order) {
       return order.amount * (1 - config.config.discount)
     },
-    
+
     isApplicable(user, order) {
       const now = Date.now()
       return now >= new Date(config.config.startDate).getTime() &&
@@ -4094,15 +4128,15 @@ strategyConfigs.forEach(config => {
 // 3. 策略可配置、可动态加载
 // 4. 每个策略独立测试
 // 5. 策略可组合使用`,
-    designPattern: '策略模式 + 开放封闭原则'
+    designPattern: "策略模式 + 开放封闭原则",
   },
   {
-    id: 'pipeline',
-    title: '管道模式',
-    subtitle: '数据处理链的最佳实践',
+    id: "pipeline",
+    title: "管道模式",
+    subtitle: "数据处理链的最佳实践",
     difficulty: 4,
-    tags: ['管道模式', '链式处理', '数据流'],
-    category: '架构模式',
+    tags: ["管道模式", "链式处理", "数据流"],
+    category: "架构模式",
     problem: `数据处理是前端最常见的场景：
 
 **实际场景：**
@@ -4129,14 +4163,14 @@ strategyConfigs.forEach(config => {
 
 async function processFormData(formData) {
   // 所有步骤写在一个函数里
-  
+
   // 步骤1: 格式化
   const formatted = {
     ...formData,
     phone: formData.phone.replace(/\\D/g, ''),
     email: formData.email.toLowerCase().trim()
   }
-  
+
   // 步骤2: 校验
   if (!formatted.name) {
     throw new Error('姓名必填')
@@ -4145,23 +4179,23 @@ async function processFormData(formData) {
     throw new Error('邮箱格式错误')
   }
   // ... 更多校验
-  
+
   // 步骤3: 转换
   const transformed = {
     ...formatted,
     fullName: \`\${formatted.firstName} \${formatted.lastName}\`,
     createdAt: new Date().toISOString()
   }
-  
+
   // 步骤4: 提交
   const response = await fetch('/api/submit', {
     method: 'POST',
     body: JSON.stringify(transformed)
   })
-  
+
   // 步骤5: 后处理
   const result = await response.json()
-  
+
   // 问题：
   // 1. 加新步骤要改这个函数
   // 2. 某些场景想跳过校验？没法做
@@ -4175,13 +4209,13 @@ type PipeFunction<T> = (input: T) => T | Promise<T>
 
 class Pipeline<T> {
   private pipes: PipeFunction<T>[] = []
-  
+
   // 添加处理步骤
   pipe(fn: PipeFunction<T>): this {
     this.pipes.push(fn)
     return this
   }
-  
+
   // 条件添加
   pipeIf(condition: boolean, fn: PipeFunction<T>): this {
     if (condition) {
@@ -4189,18 +4223,18 @@ class Pipeline<T> {
     }
     return this
   }
-  
+
   // 执行管道
   async process(initial: T): Promise<T> {
     let result = initial
-    
+
     for (const pipe of this.pipes) {
       result = await pipe(result)
     }
-    
+
     return result
   }
-  
+
   // 创建分支管道
   branch(predicate: (input: T) => boolean, truePipe: Pipeline<T>, falsePipe?: Pipeline<T>): this {
     this.pipes.push(async (input) => {
@@ -4213,7 +4247,7 @@ class Pipeline<T> {
     })
     return this
   }
-  
+
   // 并行处理
   parallel(...pipes: PipeFunction<T>[]): this {
     this.pipes.push(async (input) => {
@@ -4240,15 +4274,15 @@ const formatPipe = <T extends FormData>(input: T): T => ({
 // 校验管道
 const validatePipe = <T extends FormData>(input: T): T => {
   const errors: string[] = []
-  
+
   if (!input.name) errors.push('姓名必填')
   if (!input.email?.includes('@')) errors.push('邮箱格式错误')
   if (input.phone && input.phone.length !== 11) errors.push('手机号格式错误')
-  
+
   if (errors.length > 0) {
     throw new ValidationError(errors)
   }
-  
+
   return input
 }
 
@@ -4260,7 +4294,7 @@ const transformPipe = <T extends FormData>(input: T): T => ({
 })
 
 // 提交管道
-const createSubmitPipe = (url: string) => 
+const createSubmitPipe = (url: string) =>
   async <T extends FormData>(input: T): Promise<T & { response: Response }> => {
     const response = await fetch(url, {
       method: 'POST',
@@ -4276,7 +4310,7 @@ function createFormPipeline(config: { skipValidation?: boolean } = {}) {
     .pipeIf(!config.skipValidation, validatePipe)
     .pipe(transformPipe)
     .pipe(createSubmitPipe('/api/submit'))
-  
+
   return pipeline
 }
 
@@ -4290,7 +4324,7 @@ async function submitForm(formData: FormData) {
 // ==================== 数据处理管道 ====================
 
 // 过滤管道
-const createFilterPipe = <T>(predicate: (item: T) => boolean) => 
+const createFilterPipe = <T>(predicate: (item: T) => boolean) =>
   (items: T[]): T[] => items.filter(predicate)
 
 // 映射管道
@@ -4303,7 +4337,7 @@ const createSortPipe = <T>(compare: (a: T, b: T) => number) =>
 
 // 分组管道
 const createGroupPipe = <T, K extends string | number>(keyFn: (item: T) => K) =>
-  (items: T[]): Record<K, T[]> => 
+  (items: T[]): Record<K, T[]> =>
     items.reduce((groups, item) => {
       const key = keyFn(item)
       ;(groups[key] = groups[key] || []).push(item)
@@ -4347,13 +4381,13 @@ const errorPipe = <T>(response: APIResponse<T>): APIResponse<T> => {
 // 缓存管道
 const createCachePipe = <T>(key: string, ttl: number) => {
   const cache = new Map<string, { data: T; expires: number }>()
-  
+
   return async (response: APIResponse<T>): Promise<APIResponse<T>> => {
     const cached = cache.get(key)
     if (cached && Date.now() < cached.expires) {
       return { ...response, data: cached.data }
     }
-    
+
     cache.set(key, { data: response.data, expires: Date.now() + ttl })
     return response
   }
@@ -4364,11 +4398,11 @@ function createAPIPipeline<T>(cacheKey?: string) {
   const pipeline = new Pipeline<Response>()
     .pipe(parsePipe)
     .pipe(errorPipe)
-  
+
   if (cacheKey) {
     pipeline.pipe(createCachePipe<T>(cacheKey, 60000))
   }
-  
+
   return pipeline
 }
 
@@ -4405,7 +4439,7 @@ const createFileValidatePipe = (maxSize: number, allowedTypes: string[]) =>
 // 压缩管道
 const compressPipe = async (ctx: FileContext): Promise<FileContext> => {
   if (!ctx.file.type.startsWith('image/')) return ctx
-  
+
   const compressed = await compressImage(ctx.file, { quality: 0.8 })
   return { ...ctx, data: compressed }
 }
@@ -4415,11 +4449,11 @@ const chunkPipe = (ctx: FileContext): FileContext => {
   const chunkSize = 5 * 1024 * 1024  // 5MB
   const chunks: Blob[] = []
   const data = ctx.data || ctx.file
-  
+
   for (let i = 0; i < data.size; i += chunkSize) {
     chunks.push(data.slice(i, i + chunkSize))
   }
-  
+
   return { ...ctx, chunks }
 }
 
@@ -4442,17 +4476,17 @@ const uploadPipeline = new Pipeline<FileContext>()
 // 3. 支持条件分支和并行
 // 4. 易于测试单个管道
 // 5. 易于扩展新处理步骤`,
-    designPattern: '管道模式 + 责任链模式'
+    designPattern: "管道模式 + 责任链模式",
   },
 
   // ==================== 第六批：更多领域场景 ====================
   {
-    id: 'im',
-    title: 'IM即时通讯',
-    subtitle: '消息存储与未读数设计',
+    id: "im",
+    title: "IM即时通讯",
+    subtitle: "消息存储与未读数设计",
     difficulty: 5,
-    tags: ['消息存储', '未读数', '消息同步'],
-    category: '社交领域',
+    tags: ["消息存储", "未读数", "消息同步"],
+    category: "社交领域",
     problem: `IM系统是前端最复杂的场景之一：
 
 **核心挑战：**
@@ -4479,7 +4513,7 @@ const uploadPipeline = new Pipeline<FileContext>()
 function ChatRoom({ roomId }) {
   const [messages, setMessages] = useState([])
   const [unread, setUnread] = useState(0)
-  
+
   // 问题1: 没有本地存储，刷新就丢消息
   useEffect(() => {
     ws.on('message', (msg) => {
@@ -4488,12 +4522,12 @@ function ChatRoom({ roomId }) {
       setUnread(prev => prev + 1)
     })
   }, [])
-  
+
   // 问题3: 标记已读只是改数字，没同步服务器
   const markRead = () => {
     setUnread(0)
   }
-  
+
   return (
     <div>
       {messages.map(msg => <div key={msg.id}>{msg.content}</div>)}
@@ -4528,18 +4562,18 @@ interface Conversation {
 class MessageStore {
   private db: IDBDatabase
   private messageIndex = new Map<string, Set<string>>()  // conversation -> messageIds
-  
+
   async init() {
     this.db = await this.openDB()
   }
-  
+
   // 存储消息
   async saveMessage(message: Message) {
     const tx = this.db.transaction(['messages', 'conversations'], 'readwrite')
-    
+
     // 存消息
     tx.objectStore('messages').put(message)
-    
+
     // 更新会话最新消息
     const convStore = tx.objectStore('conversations')
     const conv = await convStore.get(message.conversationId)
@@ -4547,16 +4581,16 @@ class MessageStore {
       conv.lastMessage = message
       convStore.put(conv)
     }
-    
+
     // 更新内存索引
     if (!this.messageIndex.has(message.conversationId)) {
       this.messageIndex.set(message.conversationId, new Set())
     }
     this.messageIndex.get(message.conversationId)!.add(message.id)
-    
+
     await tx.done
   }
-  
+
   // 批量存储（同步离线消息）
   async saveMessages(messages: Message[]) {
     const tx = this.db.transaction(['messages'], 'readwrite')
@@ -4565,7 +4599,7 @@ class MessageStore {
     }
     await tx.done
   }
-  
+
   // 获取会话消息
   async getMessages(conversationId: string, options?: {
     before?: string
@@ -4573,7 +4607,7 @@ class MessageStore {
   }): Promise<Message[]> {
     const store = this.db.transaction('messages').objectStore('messages')
     const index = store.index('conversation-timestamp')
-    
+
     let range: IDBKeyRange
     if (options?.before) {
       const beforeMsg = await store.get(options.before)
@@ -4588,11 +4622,11 @@ class MessageStore {
         [conversationId, Infinity]
       )
     }
-    
+
     const messages = await index.getAll(range)
     return messages.slice(- (options?.limit || 50))
   }
-  
+
   // 去重检查
   isDuplicate(messageId: string): boolean {
     for (const ids of this.messageIndex.values()) {
@@ -4606,38 +4640,38 @@ class MessageStore {
 class UnreadManager {
   private conversations = new Map<string, Conversation>()
   private listeners = new Set<(stats: UnreadStats) => void>()
-  
+
   interface UnreadStats {
     total: number
     conversations: Array<{ id: string; count: number; mentioned: boolean }>
   }
-  
+
   // 更新会话未读
   incrementUnread(conversationId: string, mentioned: boolean) {
     const conv = this.conversations.get(conversationId)
     if (!conv) return
-    
+
     conv.unreadCount++
     if (mentioned) conv.mentioned = true
-    
+
     this.notify()
   }
-  
+
   // 标记已读
   async markRead(conversationId: string, readSeq: number) {
     const conv = this.conversations.get(conversationId)
     if (!conv) return
-    
+
     conv.unreadCount = 0
     conv.mentioned = false
     conv.readSeq = readSeq
-    
+
     // 同步到服务器
     await api.markRead(conversationId, readSeq)
-    
+
     this.notify()
   }
-  
+
   // 获取未读统计
   getStats(): UnreadStats {
     const conversations = Array.from(this.conversations.entries())
@@ -4647,18 +4681,18 @@ class UnreadManager {
         count: conv.unreadCount,
         mentioned: conv.mentioned
       }))
-    
+
     return {
       total: conversations.reduce((sum, c) => sum + c.count, 0),
       conversations
     }
   }
-  
+
   private notify() {
     const stats = this.getStats()
     this.listeners.forEach(l => l(stats))
   }
-  
+
   subscribe(listener: (stats: UnreadStats) => void) {
     this.listeners.add(listener)
     listener(this.getStats())
@@ -4672,15 +4706,15 @@ class MessageSyncer {
   private unread: UnreadManager
   private ws: WebSocket
   private syncSeq = 0  // 已同步到的序列号
-  
+
   constructor(store: MessageStore, unread: UnreadManager) {
     this.store = store
     this.unread = unread
   }
-  
+
   async connect() {
     this.ws = new WebSocket(WS_URL)
-    
+
     this.ws.onopen = () => {
       // 发送同步请求
       this.ws.send(JSON.stringify({
@@ -4688,65 +4722,65 @@ class MessageSyncer {
         lastSeq: this.syncSeq
       }))
     }
-    
+
     this.ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       this.handleMessage(data)
     }
   }
-  
+
   private async handleMessage(data: any) {
     switch (data.type) {
       case 'messages':
         // 批量同步离线消息
         await this.handleBatchMessages(data.messages)
         break
-      
+
       case 'message':
         // 单条新消息
         await this.handleNewMessage(data.message)
         break
-      
+
       case 'ack':
         // 消息送达确认
         await this.handleAck(data)
         break
-      
+
       case 'read':
         // 对方已读
         await this.handleReadReceipt(data)
         break
     }
   }
-  
+
   private async handleBatchMessages(messages: Message[]) {
     // 按序列号排序
     messages.sort((a, b) => a.seq - b.seq)
-    
+
     // 去重并存储
     for (const msg of messages) {
       if (this.store.isDuplicate(msg.id)) continue
-      
+
       await this.store.saveMessage(msg)
       this.syncSeq = Math.max(this.syncSeq, msg.seq)
-      
+
       // 更新未读（不在当前会话时）
       if (msg.conversationId !== currentConversationId) {
         this.unread.incrementUnread(msg.conversationId, this.checkMention(msg))
       }
     }
   }
-  
+
   private async handleNewMessage(msg: Message) {
     if (this.store.isDuplicate(msg.id)) return
-    
+
     await this.store.saveMessage(msg)
     this.syncSeq = Math.max(this.syncSeq, msg.seq)
-    
+
     // 通知UI更新
     this.emit('newMessage', msg)
   }
-  
+
   // 发送消息
   async sendMessage(conversationId: string, content: string): Promise<Message> {
     const message: Message = {
@@ -4759,16 +4793,16 @@ class MessageSyncer {
       timestamp: Date.now(),
       seq: 0  // 服务端分配
     }
-    
+
     // 先本地存储
     await this.store.saveMessage(message)
-    
+
     // 发送到服务器
     this.ws.send(JSON.stringify({
       type: 'send',
       message
     }))
-    
+
     return message
   }
 }
@@ -4779,55 +4813,55 @@ function useIM() {
   const syncer = useRef<MessageSyncer>()
   const [messages, setMessages] = useState<Message[]>([])
   const [unreadStats, setUnreadStats] = useState<UnreadStats>({ total: 0, conversations: [] })
-  
+
   useEffect(() => {
     const msgStore = new MessageStore()
     const unreadMgr = new UnreadManager()
     const msgSyncer = new MessageSyncer(msgStore, unreadMgr)
-    
+
     store.current = msgStore
     syncer.current = msgSyncer
-    
+
     msgStore.init().then(() => {
       msgSyncer.connect()
     })
-    
+
     // 订阅未读数变化
     unreadMgr.subscribe(setUnreadStats)
-    
+
     // 订阅新消息
     msgSyncer.on('newMessage', (msg) => {
       if (msg.conversationId === currentConversationId) {
         setMessages(prev => [...prev, msg])
       }
     })
-    
+
     return () => msgSyncer.disconnect()
   }, [])
-  
+
   const loadMessages = useCallback(async (conversationId: string) => {
     const msgs = await store.current?.getMessages(conversationId)
     setMessages(msgs || [])
   }, [])
-  
+
   const sendMessage = useCallback(async (conversationId: string, content: string) => {
     return syncer.current?.sendMessage(conversationId, content)
   }, [])
-  
+
   const markRead = useCallback(async (conversationId: string) => {
     const lastMsg = messages[messages.length - 1]
     if (lastMsg) {
       await syncer.current?.markRead(conversationId, lastMsg.seq)
     }
   }, [messages])
-  
+
   return { messages, unreadStats, loadMessages, sendMessage, markRead }
 }
 
 // ==================== 组件使用 ====================
 function ConversationList() {
   const { unreadStats } = useIM()
-  
+
   return (
     <div className="conv-list">
       {unreadStats.conversations.map(conv => (
@@ -4838,7 +4872,7 @@ function ConversationList() {
           )}
         </div>
       ))}
-      
+
       <div className="total-badge">
         {unreadStats.total > 0 && (
           <span>{unreadStats.total}条未读</span>
@@ -4850,20 +4884,20 @@ function ConversationList() {
 
 function ChatRoom({ conversationId }: { conversationId: string }) {
   const { messages, loadMessages, sendMessage, markRead } = useIM()
-  
+
   useEffect(() => {
     loadMessages(conversationId)
   }, [conversationId])
-  
+
   // 进入会话自动标记已读
   useEffect(() => {
     markRead(conversationId)
   }, [conversationId, messages.length])
-  
+
   const handleSend = async (content: string) => {
     await sendMessage(conversationId, content)
   }
-  
+
   return (
     <div className="chat-room">
       <div className="messages">
@@ -4882,15 +4916,15 @@ function ChatRoom({ conversationId }: { conversationId: string }) {
 // 3. 消息去重，不会重复
 // 4. 离线消息，断网可收
 // 5. 多端同步，状态一致`,
-    designPattern: '消息存储 + 未读管理 + 同步机制'
+    designPattern: "消息存储 + 未读管理 + 同步机制",
   },
   {
-    id: 'approval',
-    title: '审批流引擎',
-    subtitle: '工作流与状态机设计',
+    id: "approval",
+    title: "审批流引擎",
+    subtitle: "工作流与状态机设计",
     difficulty: 5,
-    tags: ['工作流', '状态机', '审批链'],
-    category: '企业应用',
+    tags: ["工作流", "状态机", "审批链"],
+    category: "企业应用",
     problem: `审批流是企业应用最复杂的业务之一：
 
 **实际场景：**
@@ -4919,12 +4953,12 @@ async function submitApproval(type, data) {
     // 写死的审批链
     const step1 = await submitTo(data, data.managerId)
     if (!step1.approved) return
-    
+
     if (data.days > 3) {
       const step2 = await submitTo(data, data.directorId)
       if (!step2.approved) return
     }
-    
+
     if (data.days > 7) {
       const step3 = await submitTo(data, data.hrId)
       // 又是一堆判断...
@@ -5044,17 +5078,17 @@ const expenseApprovalFlow: ApprovalFlow = {
 class ApprovalEngine {
   private flows = new Map<string, ApprovalFlow>()
   private instances = new Map<string, ApprovalInstance>()
-  
+
   // 注册审批流
   register(flow: ApprovalFlow) {
     this.flows.set(flow.id, flow)
   }
-  
+
   // 发起审批
   async start(flowId: string, businessId: string, context: ApprovalContext): Promise<ApprovalInstance> {
     const flow = this.flows.get(flowId)
     if (!flow) throw new Error(\`Flow not found: \${flowId}\`)
-    
+
     const instance: ApprovalInstance = {
       id: generateId(),
       flowId,
@@ -5064,24 +5098,24 @@ class ApprovalEngine {
       history: [],
       context
     }
-    
+
     // 通知第一个审批人
     await this.notifyApprovers(instance, flow.nodes[0])
-    
+
     this.instances.set(instance.id, instance)
     return instance
   }
-  
+
   // 审批操作
   async approve(
-    instanceId: string, 
+    instanceId: string,
     action: 'approve' | 'reject' | 'transfer',
     options: { approver: string; comment?: string; transferTo?: string }
   ): Promise<ApprovalInstance> {
     const instance = this.instances.get(instanceId)
     const flow = this.flows.get(instance!.flowId)
     if (!instance || !flow) throw new Error('Instance or flow not found')
-    
+
     // 记录审批历史
     instance.history.push({
       nodeId: instance.currentNode,
@@ -5090,7 +5124,7 @@ class ApprovalEngine {
       comment: options.comment,
       timestamp: Date.now()
     })
-    
+
     switch (action) {
       case 'approve':
         return this.handleApprove(instance, flow)
@@ -5100,10 +5134,10 @@ class ApprovalEngine {
         return this.handleTransfer(instance, options.transferTo!)
     }
   }
-  
+
   private async handleApprove(instance: ApprovalInstance, flow: ApprovalFlow) {
     const currentNode = flow.nodes.find(n => n.id === instance.currentNode)
-    
+
     // 会签需要所有人都同意
     if (currentNode!.type === 'all') {
       const approvals = instance.history.filter(
@@ -5114,10 +5148,10 @@ class ApprovalEngine {
         return instance  // 等待其他人审批
       }
     }
-    
+
     // 找下一个节点
     const nextNode = this.findNextNode(flow, instance)
-    
+
     if (nextNode === 'end') {
       instance.status = 'approved'
       await this.onComplete(instance, true)
@@ -5125,34 +5159,34 @@ class ApprovalEngine {
       instance.currentNode = nextNode
       await this.notifyApprovers(instance, flow.nodes.find(n => n.id === nextNode)!)
     }
-    
+
     return instance
   }
-  
+
   private async handleReject(instance: ApprovalInstance) {
     instance.status = 'rejected'
     await this.onComplete(instance, false)
     return instance
   }
-  
+
   private async handleTransfer(instance: ApprovalInstance, transferTo: string) {
     // 转交给其他人
     await this.notifyApprovers(instance, { id: 'transferred', assignee: transferTo })
     return instance
   }
-  
+
   private findNextNode(flow: ApprovalFlow, instance: ApprovalInstance): string {
     const edges = flow.edges.filter(e => e.from === instance.currentNode)
-    
+
     for (const edge of edges) {
       if (!edge.condition || edge.condition(instance.context)) {
         return edge.to
       }
     }
-    
+
     return 'end'
   }
-  
+
   private getAssignees(node: ApprovalNode, context: ApprovalContext): string[] {
     if (typeof node.assignee === 'function') {
       return node.assignee(context)
@@ -5162,31 +5196,31 @@ class ApprovalEngine {
       return [node.assignee]
     }
   }
-  
+
   private async notifyApprovers(instance: ApprovalInstance, node: ApprovalNode) {
     const approvers = this.getAssignees(node, instance.context)
     // 发送通知...
   }
-  
+
   private async onComplete(instance: ApprovalInstance, approved: boolean) {
     // 回调业务系统
   }
-  
+
   // 撤回
   async withdraw(instanceId: string, operator: string): Promise<boolean> {
     const instance = this.instances.get(instanceId)
     if (!instance || instance.status !== 'pending') return false
-    
+
     // 检查是否可以撤回（发起人且第一个节点未审批完）
-    if (instance.history.length === 0 || 
+    if (instance.history.length === 0 ||
         instance.history.every(h => h.approver !== operator)) {
       instance.status = 'cancelled'
       return true
     }
-    
+
     return false
   }
-  
+
   // 查询待办
   getPendingTasks(userId: string): ApprovalInstance[] {
     return Array.from(this.instances.values())
@@ -5194,7 +5228,7 @@ class ApprovalEngine {
         const flow = this.flows.get(inst.flowId)
         const node = flow?.nodes.find(n => n.id === inst.currentNode)
         if (!node) return false
-        
+
         const assignees = this.getAssignees(node, inst.context)
         return assignees.includes(userId)
       })
@@ -5204,13 +5238,13 @@ class ApprovalEngine {
 // ==================== React Hook ====================
 function useApproval() {
   const engine = useRef<ApprovalEngine>()
-  
+
   useEffect(() => {
     engine.current = new ApprovalEngine()
     engine.current.register(leaveApprovalFlow)
     engine.current.register(expenseApprovalFlow)
   }, [])
-  
+
   const startApproval = useCallback(async (flowId: string, data: any) => {
     const context = {
       applicant: currentUser,
@@ -5219,18 +5253,18 @@ function useApproval() {
     }
     return engine.current?.start(flowId, generateId(), context)
   }, [])
-  
+
   const approve = useCallback(async (instanceId: string, action: 'approve' | 'reject', comment?: string) => {
     return engine.current?.approve(instanceId, action, {
       approver: currentUser.id,
       comment
     })
   }, [])
-  
+
   const getMyPendingTasks = useCallback(() => {
     return engine.current?.getPendingTasks(currentUser.id) || []
   }, [])
-  
+
   return { startApproval, approve, getMyPendingTasks }
 }
 
@@ -5238,11 +5272,11 @@ function useApproval() {
 function ApprovalList() {
   const { getMyPendingTasks } = useApproval()
   const [tasks, setTasks] = useState<ApprovalInstance[]>([])
-  
+
   useEffect(() => {
     setTasks(getMyPendingTasks())
   }, [])
-  
+
   return (
     <div className="approval-list">
       {tasks.map(task => (
@@ -5254,15 +5288,15 @@ function ApprovalList() {
 
 function ApprovalCard({ instance }: { instance: ApprovalInstance }) {
   const { approve } = useApproval()
-  
+
   const handleApprove = async () => {
     await approve(instance.id, 'approve', '同意')
   }
-  
+
   const handleReject = async () => {
     await approve(instance.id, 'reject', '不同意')
   }
-  
+
   return (
     <div className="card">
       <div className="title">{instance.businessId}</div>
@@ -5289,15 +5323,15 @@ function ApprovalCard({ instance }: { instance: ApprovalInstance }) {
 // 3. 完整的审批历史
 // 4. 支持撤回、转交
 // 5. 状态机保证流程正确`,
-    designPattern: '工作流引擎 + 状态机 + 责任链'
+    designPattern: "工作流引擎 + 状态机 + 责任链",
   },
   {
-    id: 'report',
-    title: '大数据量报表',
-    subtitle: '前端性能与内存优化',
+    id: "report",
+    title: "大数据量报表",
+    subtitle: "前端性能与内存优化",
     difficulty: 5,
-    tags: ['虚拟滚动', '内存优化', '懒加载'],
-    category: '企业应用',
+    tags: ["虚拟滚动", "内存优化", "懒加载"],
+    category: "企业应用",
     problem: `大数据报表是企业应用最头疼的场景：
 
 **实际场景：**
@@ -5324,16 +5358,16 @@ function ApprovalCard({ instance }: { instance: ApprovalInstance }) {
 
 function ReportPage() {
   const [data, setData] = useState([])
-  
+
   useEffect(() => {
     // 一次性加载所有数据
     fetch('/api/report').then(r => r.json()).then(setData)
   }, [])
-  
+
   // 前端计算汇总（阻塞UI）
   const total = data.reduce((sum, item) => sum + item.amount, 0)
   const avg = total / data.length
-  
+
   // 直接渲染（卡死）
   return (
     <table>
@@ -5362,7 +5396,7 @@ class LazyDataSource {
   private cache = new Map<number, any[]>()
   private chunkSize = 1000
   private total = 0
-  
+
   // 分片加载
   async loadChunk(offset: number): Promise<DataChunk> {
     // 检查缓存
@@ -5374,14 +5408,14 @@ class LazyDataSource {
         hasMore: offset + this.chunkSize < this.total
       }
     }
-    
+
     // 请求服务端
     const response = await fetch(\`/api/report?offset=\${offset}&limit=\${this.chunkSize}\`)
     const result = await response.json()
-    
+
     this.total = result.total
     this.cache.set(offset, result.data)
-    
+
     return {
       data: result.data,
       offset,
@@ -5389,7 +5423,7 @@ class LazyDataSource {
       hasMore: result.hasMore
     }
   }
-  
+
   // 预加载相邻分片
   prefetch(offset: number) {
     const nextOffset = offset + this.chunkSize
@@ -5397,7 +5431,7 @@ class LazyDataSource {
       this.loadChunk(nextOffset)
     }
   }
-  
+
   // 清理缓存（内存优化）
   clearOldChunks(currentOffset: number) {
     const keepRange = this.chunkSize * 3  // 保留前后3个分片
@@ -5414,44 +5448,44 @@ function VirtualTable({ dataSource }: { dataSource: LazyDataSource }) {
   const [visibleData, setVisibleData] = useState<any[]>([])
   const [scrollTop, setScrollTop] = useState(0)
   const [total, setTotal] = useState(0)
-  
+
   const rowHeight = 40
   const containerHeight = 600
   const visibleCount = Math.ceil(containerHeight / rowHeight) + 5
   const startIndex = Math.floor(scrollTop / rowHeight)
-  
+
   // 加载可见区域数据
   useEffect(() => {
     const loadVisible = async () => {
       const chunkOffset = Math.floor(startIndex / 1000) * 1000
       const chunk = await dataSource.loadChunk(chunkOffset)
-      
+
       setTotal(chunk.total)
-      
+
       // 从分片中提取可见部分
       const localIndex = startIndex - chunkOffset
       const data = chunk.data.slice(
         Math.max(0, localIndex - 5),
         localIndex + visibleCount
       )
-      
+
       setVisibleData(data)
-      
+
       // 预加载
       dataSource.prefetch(chunkOffset)
-      
+
       // 清理旧数据
       dataSource.clearOldChunks(chunkOffset)
     }
-    
+
     loadVisible()
   }, [startIndex, dataSource])
-  
+
   const totalHeight = total * rowHeight
   const offsetY = startIndex * rowHeight
-  
+
   return (
-    <div 
+    <div
       className="table-container"
       style={{ height: containerHeight, overflow: 'auto' }}
       onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
@@ -5472,19 +5506,19 @@ function VirtualTable({ dataSource }: { dataSource: LazyDataSource }) {
 // ==================== 后台计算 ====================
 class BackgroundCalculator {
   private worker: Worker
-  
+
   constructor() {
     // 创建 Web Worker
     const blob = new Blob([\`
       self.onmessage = function(e) {
         const { type, data } = e.data
-        
+
         switch (type) {
           case 'sum':
             const result = data.reduce((sum, item) => sum + item.value, 0)
             self.postMessage({ type: 'sum', result })
             break
-          
+
           case 'groupBy':
             const groups = {}
             for (const item of data) {
@@ -5496,10 +5530,10 @@ class BackgroundCalculator {
         }
       }
     \`], { type: 'application/javascript' })
-    
+
     this.worker = new Worker(URL.createObjectURL(blob))
   }
-  
+
   // 异步计算
   calculate(type: string, data: any[]): Promise<any> {
     return new Promise((resolve) => {
@@ -5513,7 +5547,7 @@ class BackgroundCalculator {
       this.worker.postMessage({ type, data })
     })
   }
-  
+
   terminate() {
     this.worker.terminate()
   }
@@ -5525,7 +5559,7 @@ class StreamingExporter {
   async exportToCSV(fetchChunk: (offset: number) => Promise<any[]>, total: number) {
     const chunkSize = 1000
     const chunks = Math.ceil(total / chunkSize)
-    
+
     // 创建可写流
     const stream = new WritableStream({
       write(chunk) {
@@ -5533,26 +5567,26 @@ class StreamingExporter {
         console.log('Writing chunk:', chunk)
       }
     })
-    
+
     // 流式处理
     for (let i = 0; i < chunks; i++) {
       const data = await fetchChunk(i * chunkSize)
       const csv = this.toCSV(data)
       // 写入流
       await stream.getWriter().write(csv)
-      
+
       // 更新进度
       this.updateProgress((i + 1) / chunks * 100)
     }
-    
+
     stream.getWriter().close()
   }
-  
+
   private toCSV(data: any[]): string {
     // 转换为CSV格式
     return data.map(row => Object.values(row).join(',')).join('\\n')
   }
-  
+
   private updateProgress(percent: number) {
     // 更新导出进度
   }
@@ -5563,21 +5597,21 @@ function useBigReport() {
   const dataSource = useRef(new LazyDataSource())
   const calculator = useRef(new BackgroundCalculator())
   const exporter = useRef(new StreamingExporter())
-  
+
   useEffect(() => {
     return () => {
       calculator.current.terminate()
     }
   }, [])
-  
+
   const loadData = useCallback(async (offset: number) => {
     return dataSource.current.loadChunk(offset)
   }, [])
-  
+
   const calculate = useCallback(async (type: string, data: any[]) => {
     return calculator.current.calculate(type, data)
   }, [])
-  
+
   const exportCSV = useCallback(async () => {
     const firstChunk = await dataSource.current.loadChunk(0)
     await exporter.current.exportToCSV(
@@ -5585,7 +5619,7 @@ function useBigReport() {
       firstChunk.total
     )
   }, [])
-  
+
   return { loadData, calculate, exportCSV }
 }
 
@@ -5594,14 +5628,14 @@ function ReportPage() {
   const { loadData, calculate, exportCSV } = useBigReport()
   const [summary, setSummary] = useState({ total: 0, avg: 0 })
   const [exportProgress, setExportProgress] = useState(0)
-  
+
   // 加载汇总数据（服务端计算）
   useEffect(() => {
     fetch('/api/report/summary')
       .then(r => r.json())
       .then(setSummary)
   }, [])
-  
+
   return (
     <div className="report-page">
       {/* 汇总卡片 */}
@@ -5609,10 +5643,10 @@ function ReportPage() {
         <Card title="总计" value={summary.total} />
         <Card title="平均" value={summary.avg} />
       </div>
-      
+
       {/* 虚拟表格 */}
       <VirtualTable dataSource={dataSource} />
-      
+
       {/* 导出 */}
       <div className="export-section">
         <button onClick={exportCSV}>
@@ -5629,15 +5663,15 @@ function ReportPage() {
 // 3. Worker计算，UI不阻塞
 // 4. 流式导出，不占内存
 // 5. 预加载+缓存，体验丝滑`,
-    designPattern: '分片加载 + 虚拟滚动 + Worker计算'
+    designPattern: "分片加载 + 虚拟滚动 + Worker计算",
   },
   {
-    id: 'scheduler',
-    title: '任务调度器',
-    subtitle: '定时任务与队列管理',
+    id: "scheduler",
+    title: "任务调度器",
+    subtitle: "定时任务与队列管理",
     difficulty: 4,
-    tags: ['任务队列', '定时器', '优先级'],
-    category: '架构模式',
+    tags: ["任务队列", "定时器", "优先级"],
+    category: "架构模式",
     problem: `前端也需要任务调度：
 
 **实际场景：**
@@ -5670,7 +5704,7 @@ function Editor() {
     }, 2000)
     return () => clearTimeout(timer)
   }, [content])
-  
+
   // 重试逻辑重复
   const fetchWithRetry = async (fn, retries = 3) => {
     for (let i = 0; i < retries; i++) {
@@ -5682,7 +5716,7 @@ function Editor() {
       }
     }
   }
-  
+
   // 问题：
   // 1. 没法取消任务
   // 2. 没法控制并发
@@ -5713,14 +5747,14 @@ class TaskScheduler {
   private timers = new Map<string, NodeJS.Timeout>()
   private maxConcurrent = 4
   private paused = false
-  
+
   // 添加任务
   schedule<T>(task: Task<T>): string {
     // 去重检查
     if (task.dedupe) {
       this.cancelByDedupe(task.dedupe)
     }
-    
+
     // 按优先级插入
     const index = this.queue.findIndex(t => t.priority > task.priority)
     if (index === -1) {
@@ -5728,24 +5762,24 @@ class TaskScheduler {
     } else {
       this.queue.splice(index, 0, task)
     }
-    
+
     // 尝试执行
     this.tryExecute()
-    
+
     return task.id
   }
-  
+
   // 延迟任务
   scheduleDelayed<T>(task: Task<T>, delay: number): string {
     const timer = setTimeout(() => {
       this.timers.delete(task.id)
       this.schedule(task)
     }, delay)
-    
+
     this.timers.set(task.id, timer)
     return task.id
   }
-  
+
   // 周期任务
   scheduleRecurring<T>(
     task: Task<T>,
@@ -5755,17 +5789,17 @@ class TaskScheduler {
     const run = async () => {
       await this.executeTask(task)
     }
-    
+
     if (options?.immediate) {
       run()
     }
-    
+
     const timer = setInterval(run, interval)
     this.timers.set(task.id, timer)
-    
+
     return task.id
   }
-  
+
   // 批量任务
   async scheduleBatch<T>(
     items: T[],
@@ -5773,34 +5807,34 @@ class TaskScheduler {
     options?: { concurrency?: number }
   ): Promise<void> {
     const concurrency = options?.concurrency || this.maxConcurrent
-    
+
     for (let i = 0; i < items.length; i += concurrency) {
       const batch = items.slice(i, i + concurrency)
       await Promise.all(batch.map(handler))
     }
   }
-  
+
   // 执行任务
   private async tryExecute() {
     if (this.paused) return
     if (this.running.size >= this.maxConcurrent) return
     if (this.queue.length === 0) return
-    
+
     const task = this.queue.shift()!
     const promise = this.executeTask(task)
     this.running.set(task.id, promise)
-    
+
     promise.finally(() => {
       this.running.delete(task.id)
       this.tryExecute()
     })
   }
-  
+
   // 执行单个任务
   private async executeTask<T>(task: Task<T>): Promise<T> {
     let attempt = 0
     const maxAttempts = (task.retry?.count || 0) + 1
-    
+
     while (attempt < maxAttempts) {
       try {
         // 超时处理
@@ -5810,40 +5844,40 @@ class TaskScheduler {
               this.createTimeout(task.timeout)
             ])
           : await task.execute()
-        
+
         task.onSuccess?.(result)
         return result
-        
+
       } catch (error) {
         attempt++
-        
+
         if (attempt >= maxAttempts) {
           task.onError?.(error)
           throw error
         }
-        
+
         // 重试延迟
         const delay = typeof task.retry!.delay === 'function'
           ? task.retry!.delay(attempt)
           : task.retry!.delay || 1000
-        
+
         await this.sleep(delay)
       }
     }
-    
+
     throw new Error('Task failed')
   }
-  
+
   private createTimeout(ms: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Timeout')), ms)
     })
   }
-  
+
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
   }
-  
+
   // 取消任务
   cancel(taskId: string): boolean {
     // 从队列移除
@@ -5852,7 +5886,7 @@ class TaskScheduler {
       this.queue.splice(queueIndex, 1)
       return true
     }
-    
+
     // 取消定时器
     const timer = this.timers.get(taskId)
     if (timer) {
@@ -5860,33 +5894,33 @@ class TaskScheduler {
       this.timers.delete(taskId)
       return true
     }
-    
+
     return false
   }
-  
+
   // 按去重key取消
   cancelByDedupe(dedupe: string): void {
     // 取消队列中的
     this.queue = this.queue.filter(t => t.dedupe !== dedupe)
-    
+
     // 取消定时器中的
     for (const [id, timer] of this.timers) {
       clearTimeout(timer)
       this.timers.delete(id)
     }
   }
-  
+
   // 暂停/恢复
   pause() { this.paused = true }
   resume() { this.paused = false; this.tryExecute() }
-  
+
   // 清空
   clear() {
     this.queue = []
     this.timers.forEach(t => clearTimeout(t))
     this.timers.clear()
   }
-  
+
   // 状态
   getStatus() {
     return {
@@ -5900,28 +5934,28 @@ class TaskScheduler {
 // ==================== React Hook ====================
 function useTaskScheduler() {
   const scheduler = useRef<TaskScheduler>()
-  
+
   useEffect(() => {
     scheduler.current = new TaskScheduler()
     return () => scheduler.current?.clear()
   }, [])
-  
+
   const schedule = useCallback((task: Omit<Task, 'id'>) => {
     return scheduler.current?.schedule({ ...task, id: generateId() })
   }, [])
-  
+
   const scheduleDelayed = useCallback((task: Omit<Task, 'id'>, delay: number) => {
     return scheduler.current?.scheduleDelayed({ ...task, id: generateId() }, delay)
   }, [])
-  
+
   const scheduleRecurring = useCallback((task: Omit<Task, 'id'>, interval: number) => {
     return scheduler.current?.scheduleRecurring({ ...task, id: generateId() }, interval)
   }, [])
-  
+
   const cancel = useCallback((taskId: string) => {
     scheduler.current?.cancel(taskId)
   }, [])
-  
+
   return { schedule, scheduleDelayed, scheduleRecurring, cancel }
 }
 
@@ -5931,13 +5965,13 @@ function useTaskScheduler() {
 function useAutoSave(content: string) {
   const { scheduleDelayed, cancel } = useTaskScheduler()
   const saveTaskId = useRef<string>()
-  
+
   useEffect(() => {
     // 取消之前的保存任务
     if (saveTaskId.current) {
       cancel(saveTaskId.current)
     }
-    
+
     // 2秒后保存
     saveTaskId.current = scheduleDelayed({
       name: 'auto-save',
@@ -5953,10 +5987,10 @@ function useAutoSave(content: string) {
 // 批量请求
 function useBatchRequest() {
   const scheduler = useRef<TaskScheduler>()
-  
+
   const batchFetch = async (urls: string[]) => {
     const results: any[] = []
-    
+
     await scheduler.current?.scheduleBatch(
       urls,
       async (url) => {
@@ -5965,17 +5999,17 @@ function useBatchRequest() {
       },
       { concurrency: 4 }
     )
-    
+
     return results
   }
-  
+
   return { batchFetch }
 }
 
 // 定时刷新
 function usePeriodicRefresh(fetchFn: () => Promise<void>, interval: number) {
   const { scheduleRecurring, cancel } = useTaskScheduler()
-  
+
   useEffect(() => {
     const taskId = scheduleRecurring({
       name: 'periodic-refresh',
@@ -5983,7 +6017,7 @@ function usePeriodicRefresh(fetchFn: () => Promise<void>, interval: number) {
       execute: fetchFn,
       onError: (e) => console.error('Refresh failed:', e)
     }, interval)
-    
+
     return () => cancel(taskId!)
   }, [interval])
 }
@@ -5991,7 +6025,7 @@ function usePeriodicRefresh(fetchFn: () => Promise<void>, interval: number) {
 // 带重试的请求
 function useRetryableRequest() {
   const { schedule } = useTaskScheduler()
-  
+
   const fetchWithRetry = async <T,>(fn: () => Promise<T>): Promise<T> => {
     return new Promise((resolve, reject) => {
       schedule({
@@ -6007,7 +6041,7 @@ function useRetryableRequest() {
       })
     })
   }
-  
+
   return { fetchWithRetry }
 }
 
@@ -6017,16 +6051,16 @@ function useRetryableRequest() {
 // 3. 自动重试、超时处理
 // 4. 任务可取消
 // 5. 支持定时、周期、延迟`,
-    designPattern: '任务队列 + 调度器模式 + 重试策略'
+    designPattern: "任务队列 + 调度器模式 + 重试策略",
   },
   // ==================== 电商核心场景 ====================
   {
-    id: 'sku-selector',
-    title: 'SKU组合选择器',
-    subtitle: '多维度属性组合与库存计算',
+    id: "sku-selector",
+    title: "SKU组合选择器",
+    subtitle: "多维度属性组合与库存计算",
     difficulty: 5,
-    tags: ['笛卡尔积', '图论', '状态机'],
-    category: '电商领域',
+    tags: ["笛卡尔积", "图论", "状态机"],
+    category: "电商领域",
     problem: `这是电商最经典的复杂场景之一，看似简单的"选择商品规格"，背后涉及：
 
 **场景特征（看到这些就该想到用图论/状态机）：**
@@ -6054,7 +6088,7 @@ function ProductPage({ product }) {
   const [color, setColor] = useState('')
   const [size, setSize] = useState('')
   const [version, setVersion] = useState('')
-  
+
   // 问题1: 每个属性都要写一堆判断
   const isColorDisabled = (c) => {
     if (size === 'S' && c === 'red') return true  // S码红色无货
@@ -6063,14 +6097,14 @@ function ProductPage({ product }) {
     // ... 100行 if-else
     return false
   }
-  
+
   const isSizeDisabled = (s) => {
     if (color === 'red' && s === 'S') return true
     if (color === 'blue' && s === 'M') return true
     // ... 又是100行
     return false
   }
-  
+
   // 问题2: 获取当前SKU逻辑复杂
   const getCurrentSku = () => {
     // 遍历所有SKU找到匹配的
@@ -6081,7 +6115,7 @@ function ProductPage({ product }) {
     }
     return null
   }
-  
+
   // 问题3: 价格计算散落各处
   const getPrice = () => {
     const sku = getCurrentSku()
@@ -6090,18 +6124,18 @@ function ProductPage({ product }) {
     if (version === 'pro') return sku.price + 500  // pro版加价
     return sku.price
   }
-  
+
   // 问题4: 每次选择都要重新计算所有状态
   // 问题5: 无法处理"部分可选"（如某组合仅部分城市有货）
   // 问题6: 库存变化时，整块逻辑要重写
-  
+
   return (
     <div>
       {/* 颜色选择 */}
       <div>
         {colors.map(c => (
-          <button 
-            key={c} 
+          <button
+            key={c}
             disabled={isColorDisabled(c)}
             onClick={() => setColor(c)}
             className={color === c ? 'active' : ''}
@@ -6156,36 +6190,36 @@ class SkuSelector {
   private specs: SpecDef[]
   private skus: Sku[]
   private selected: Map<string, string> = new Map()  // 当前选择
-  
+
   constructor(specs: SpecDef[], skus: Sku[]) {
     this.specs = specs
     this.skus = skus
   }
-  
+
   // 选择某个属性值
   select(specId: string, valueId: string): SelectionResult {
     this.selected.set(specId, valueId)
     return this.computeState()
   }
-  
+
   // 取消选择
   deselect(specId: string): SelectionResult {
     this.selected.delete(specId)
     return this.computeState()
   }
-  
+
   // 核心算法：计算当前状态
   private computeState(): SelectionResult {
     // 1. 找出所有可能的SKU路径
     const possibleSkus = this.getPossibleSkus()
-    
+
     // 2. 构建可选状态矩阵
     const specStates = this.buildSpecStates(possibleSkus)
-    
+
     // 3. 判断是否完成选择
     const isComplete = this.selected.size === this.specs.length
     const currentSku = isComplete ? this.findExactSku() : null
-    
+
     return {
       selected: new Map(this.selected),
       specStates,           // 每个属性值的状态
@@ -6196,7 +6230,7 @@ class SkuSelector {
       stockInfo: this.getStockInfo(possibleSkus),    // 库存汇总
     }
   }
-  
+
   // 获取可能的SKU（路径搜索）
   private getPossibleSkus(): Sku[] {
     return this.skus.filter(sku => {
@@ -6209,30 +6243,30 @@ class SkuSelector {
       return true
     })
   }
-  
+
   // 构建属性状态矩阵（核心！）
   private buildSpecStates(possibleSkus: Sku[]): Map<string, Map<string, SpecState>> {
     const states = new Map<string, Map<string, SpecState>>()
-    
+
     for (const spec of this.specs) {
       const valueStates = new Map<string, SpecState>()
-      
+
       for (const value of spec.values) {
         // 模拟选择这个值，看有多少SKU可选
         const testSelected = new Map(this.selected)
         testSelected.set(spec.id, value.id)
-        
+
         const matchedSkus = this.skus.filter(sku => {
           for (const [sId, vId] of testSelected) {
             if (sku.specCombo.get(sId) !== vId) return false
           }
           return true
         })
-        
+
         const isSelected = this.selected.get(spec.id) === value.id
         const hasStock = matchedSkus.some(s => s.stock > s.lockedStock)
         const isDisabled = matchedSkus.length === 0 || !hasStock
-        
+
         valueStates.set(value.id, {
           value,
           isSelected,
@@ -6242,28 +6276,28 @@ class SkuSelector {
           priceImpact: this.getPriceImpact(spec.id, value.id, matchedSkus),
         })
       }
-      
+
       states.set(spec.id, valueStates)
     }
-    
+
     return states
   }
-  
+
   private getDisabledReason(skus: Sku[], hasStock: boolean): string | null {
     if (skus.length === 0) return '该组合不存在'
     if (!hasStock) return '暂时缺货'
     return null
   }
-  
+
   private getPriceImpact(specId: string, valueId: string, skus: Sku[]): number | null {
     // 计算选择此值的价格影响
     if (skus.length === 0) return null
-    
+
     const basePrice = Math.min(...this.skus.map(s => s.price))
     const minPriceWithThis = Math.min(...skus.map(s => s.price))
     return minPriceWithThis - basePrice
   }
-  
+
   private findExactSku(): Sku | null {
     return this.skus.find(sku => {
       for (const [specId, valueId] of this.selected) {
@@ -6272,7 +6306,7 @@ class SkuSelector {
       return sku.specCombo.size === this.selected.size
     }) || null
   }
-  
+
   private getPriceRange(skus: Sku[]): { min: number; max: number } {
     const prices = skus.map(s => s.price)
     return {
@@ -6280,12 +6314,12 @@ class SkuSelector {
       max: Math.max(...prices),
     }
   }
-  
+
   private getStockInfo(skus: Sku[]): StockInfo {
     const totalStock = skus.reduce((sum, s) => sum + s.stock, 0)
     const availableStock = skus.reduce((sum, s) => sum + Math.max(0, s.stock - s.lockedStock), 0)
     const hasPresell = skus.some(s => s.status === 'presell')
-    
+
     return { totalStock, availableStock, hasPresell }
   }
 }
@@ -6321,52 +6355,52 @@ interface StockInfo {
 
 function useSkuSelector(specs: SpecDef[], skus: Sku[]) {
   const selectorRef = useRef(new SkuSelector(specs, skus))
-  const [result, setResult] = useState<SelectionResult>(() => 
+  const [result, setResult] = useState<SelectionResult>(() =>
     selectorRef.current.select('', '')
   )
-  
+
   const select = useCallback((specId: string, valueId: string) => {
     const result = selectorRef.current.select(specId, valueId)
     setResult(result)
   }, [])
-  
+
   const deselect = useCallback((specId: string) => {
     const result = selectorRef.current.deselect(specId)
     setResult(result)
   }, [])
-  
+
   return { ...result, select, deselect }
 }
 
 // ==================== 组件使用 ====================
 
 function SkuSelectorComponent({ product }: { product: Product }) {
-  const { specs, skus, selected, specStates, currentSku, isComplete, priceRange, stockInfo, select, deselect } = 
+  const { specs, skus, selected, specStates, currentSku, isComplete, priceRange, stockInfo, select, deselect } =
     useSkuSelector(product.specs, product.skus)
-  
+
   return (
     <div className="space-y-4">
       {/* 价格和库存信息 */}
       <div className="flex justify-between items-center">
         <div className="text-2xl font-bold text-red-500">
-          {isComplete 
+          {isComplete
             ? \`¥\${currentSku!.price}\`
             : \`¥\${priceRange.min} - ¥\${priceRange.max}\`
           }
         </div>
         <div className="text-sm text-gray-500">
-          {isComplete 
+          {isComplete
             ? \`库存: \${currentSku!.stock - currentSku!.lockedStock}件\`
             : \`总库存: \${stockInfo.availableStock}件\`
           }
         </div>
       </div>
-      
+
       {/* 规格选择 */}
       {specs.map(spec => {
         const valueStates = specStates.get(spec.id)
         if (!valueStates) return null
-        
+
         return (
           <div key={spec.id} className="space-y-2">
             <div className="text-sm font-medium">{spec.name}</div>
@@ -6376,15 +6410,15 @@ function SkuSelectorComponent({ product }: { product: Product }) {
                 return (
                   <button
                     key={value.id}
-                    onClick={() => state.isSelected 
-                      ? deselect(spec.id) 
+                    onClick={() => state.isSelected
+                      ? deselect(spec.id)
                       : select(spec.id, value.id)
                     }
                     disabled={state.isDisabled}
                     className={\`
                       px-4 py-2 rounded border transition-all
-                      \${state.isSelected 
-                        ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                      \${state.isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-600'
                         : state.isDisabled
                           ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed line-through'
                           : 'border-gray-300 hover:border-blue-300'
@@ -6407,13 +6441,13 @@ function SkuSelectorComponent({ product }: { product: Product }) {
           </div>
         )
       })}
-      
+
       {/* 加入购物车按钮 */}
-      <button 
+      <button
         disabled={!isComplete || !currentSku || currentSku.stock <= currentSku.lockedStock}
         className="w-full py-3 bg-red-500 text-white rounded-lg disabled:bg-gray-300"
       >
-        {!isComplete ? '请选择规格' 
+        {!isComplete ? '请选择规格'
           : currentSku!.stock <= currentSku!.lockedStock ? '暂时缺货'
           : '加入购物车'
         }
@@ -6428,15 +6462,15 @@ function SkuSelectorComponent({ product }: { product: Product }) {
 // 3. 库存变化自动响应
 // 4. 支持预售、缺货等复杂状态
 // 5. 价格影响实时计算`,
-    designPattern: '图论路径搜索 + 状态机 + 规则引擎'
+    designPattern: "图论路径搜索 + 状态机 + 规则引擎",
   },
   {
-    id: 'coupon-stack',
-    title: '优惠券叠加计算',
-    subtitle: '多种优惠叠加互斥规则引擎',
+    id: "coupon-stack",
+    title: "优惠券叠加计算",
+    subtitle: "多种优惠叠加互斥规则引擎",
     difficulty: 5,
-    tags: ['策略模式', '责任链', '规则引擎'],
-    category: '电商领域',
+    tags: ["策略模式", "责任链", "规则引擎"],
+    category: "电商领域",
     problem: `优惠券叠加计算是电商最复杂的业务逻辑之一：
 
 **场景特征（看到这些就该想到规则引擎）：**
@@ -6457,9 +6491,9 @@ function SkuSelectorComponent({ product }: { product: Product }) {
 function calculatePrice(order, coupons) {
   let price = order.totalPrice
   let discount = 0
-  
+
   const usedCoupons = []
-  
+
   // 问题1: 大量 if-else 判断券的类型
   for (const coupon of coupons) {
     if (coupon.type === 'full_reduction') {
@@ -6498,17 +6532,17 @@ function calculatePrice(order, coupons) {
       }
     }
     // ... 还有10种券类型
-    
+
     // 问题2: 互斥规则写死在代码里
     // 问题3: 叠加规则难以维护
     // 问题4: 新增券类型要改这里
   }
-  
+
   // 问题5: 优惠上限判断
   if (discount > price * 0.5) {
     discount = price * 0.5  // 最多优惠50%
   }
-  
+
   return {
     originalPrice: order.totalPrice,
     discount,
@@ -6561,7 +6595,7 @@ interface PriceContext {
   items: OrderItem[]
   availableCoupons: Coupon[]
   selectedCoupons: Coupon[]
-  
+
   // 计算中间结果
   itemPrices: Map<string, number>      // 商品分摊价格
   appliedDiscounts: DiscountRecord[]   // 已应用的优惠
@@ -6591,7 +6625,7 @@ const FullReductionStrategy: CouponStrategy = {
   },
   calculate(context, coupon) {
     if (!this.canApply(context, coupon)) return 0
-    
+
     // 考虑最高优惠限制
     const discount = coupon.discount
     if (coupon.maxDiscount) {
@@ -6622,7 +6656,7 @@ const DiscountStrategy: CouponStrategy = {
     const eligiblePrice = context.items
       .filter(item => this.isEligible(item, coupon))
       .reduce((sum, item) => sum + item.price * item.quantity, 0)
-    
+
     let discount = eligiblePrice * (1 - coupon.discount)
     if (coupon.maxDiscount) {
       discount = Math.min(discount, coupon.maxDiscount)
@@ -6641,30 +6675,30 @@ const DiscountStrategy: CouponStrategy = {
 class CouponRuleEngine {
   private strategies: Map<CouponType, CouponStrategy> = new Map()
   private rules: Rule[] = []
-  
+
   constructor() {
     this.strategies.set('full_reduction', FullReductionStrategy)
     this.strategies.set('discount', DiscountStrategy)
     // ... 注册其他策略
   }
-  
+
   addRule(rule: Rule) {
     this.rules.push(rule)
     return this
   }
-  
+
   // 检查互斥规则
   checkMutex(coupons: Coupon[]): Map<string, string[]> {
     const conflicts = new Map<string, string[]>()
-    
+
     const mutexRules = this.rules.filter(r => r.type === 'mutex')
-    
+
     for (const rule of mutexRules) {
-      const matchedCoupons = coupons.filter(c => 
-        rule.couponTypes?.includes(c.type) || 
+      const matchedCoupons = coupons.filter(c =>
+        rule.couponTypes?.includes(c.type) ||
         rule.couponIds?.includes(c.id)
       )
-      
+
       if (matchedCoupons.length > 1) {
         for (const c of matchedCoupons) {
           const others = matchedCoupons.filter(x => x.id !== c.id).map(x => x.id)
@@ -6672,46 +6706,46 @@ class CouponRuleEngine {
         }
       }
     }
-    
+
     return conflicts
   }
-  
+
   // 检查叠加规则
   canStack(coupon1: Coupon, coupon2: Coupon): boolean {
     // 同组互斥
     if (coupon1.stackGroup && coupon1.stackGroup === coupon2.stackGroup) {
       return false
     }
-    
+
     // 检查规则
     const stackRules = this.rules.filter(r => r.type === 'stack')
     for (const rule of stackRules) {
       // 如果规则说这两类不能叠加
-      if (rule.couponTypes?.includes(coupon1.type) && 
+      if (rule.couponTypes?.includes(coupon1.type) &&
           rule.couponTypes?.includes(coupon2.type)) {
         return false
       }
     }
-    
+
     return true
   }
-  
+
   // 计算最优组合
   findBestCombination(context: PriceContext): Coupon[] {
     const availableCoupons = context.availableCoupons
     const validCombinations: { coupons: Coupon[]; discount: number }[] = []
-    
+
     // 生成所有可能的组合（考虑互斥规则）
     this.generateCombinations(availableCoupons, [], validCombinations, context)
-    
+
     // 找到优惠最大的组合
-    const best = validCombinations.reduce((best, curr) => 
+    const best = validCombinations.reduce((best, curr) =>
       curr.discount > best.discount ? curr : best
     , { coupons: [], discount: 0 })
-    
+
     return best.coupons
   }
-  
+
   private generateCombinations(
     remaining: Coupon[],
     selected: Coupon[],
@@ -6721,19 +6755,19 @@ class CouponRuleEngine {
     // 计算当前选择的优惠
     const discount = this.calculateTotalDiscount(context, selected)
     results.push({ coupons: [...selected], discount })
-    
+
     // 尝试添加更多券
     for (let i = 0; i < remaining.length; i++) {
       const coupon = remaining[i]
-      
+
       // 检查是否可以与已选券叠加
       const canAdd = selected.every(s => this.canStack(s, coupon))
       if (!canAdd) continue
-      
+
       // 检查是否适用
       const strategy = this.strategies.get(coupon.type)
       if (!strategy?.canApply(context, coupon)) continue
-      
+
       // 递归
       this.generateCombinations(
         remaining.slice(i + 1),
@@ -6743,28 +6777,28 @@ class CouponRuleEngine {
       )
     }
   }
-  
+
   // 计算总优惠
   private calculateTotalDiscount(context: PriceContext, coupons: Coupon[]): number {
     let totalDiscount = 0
     let remainingPrice = context.order.totalPrice
-    
+
     // 按优先级排序
     const sortedCoupons = [...coupons].sort((a, b) => b.priority - a.priority)
-    
+
     for (const coupon of sortedCoupons) {
       const strategy = this.strategies.get(coupon.type)
       if (!strategy) continue
-      
+
       const discount = Math.min(
         strategy.calculate({ ...context, currentPrice: remainingPrice }, coupon),
         remainingPrice  // 不能超过剩余金额
       )
-      
+
       totalDiscount += discount
       remainingPrice -= discount
     }
-    
+
     // 检查优惠上限
     const limitRules = this.rules.filter(r => r.type === 'limit')
     for (const rule of limitRules) {
@@ -6772,7 +6806,7 @@ class CouponRuleEngine {
         totalDiscount = rule.maxDiscount
       }
     }
-    
+
     return totalDiscount
   }
 }
@@ -6800,7 +6834,7 @@ const engine = new CouponRuleEngine()
 // React Hook
 function useCouponEngine(order: Order, availableCoupons: Coupon[]) {
   const engineRef = useRef(engine)
-  
+
   const findBest = useCallback(() => {
     const context: PriceContext = {
       order,
@@ -6813,7 +6847,7 @@ function useCouponEngine(order: Order, availableCoupons: Coupon[]) {
     }
     return engineRef.current.findBestCombination(context)
   }, [order, availableCoupons])
-  
+
   return { findBest, engine: engineRef.current }
 }
 
@@ -6822,15 +6856,15 @@ function useCouponEngine(order: Order, availableCoupons: Coupon[]) {
 // 2. 互斥/叠加规则可配置
 // 3. 自动计算最优组合
 // 4. 支持复杂的条件判断`,
-    designPattern: '策略模式 + 责任链模式 + 规则引擎'
+    designPattern: "策略模式 + 责任链模式 + 规则引擎",
   },
   {
-    id: 'inventory-lock',
-    title: '库存预占与释放',
-    subtitle: '下单锁库存，超时自动释放',
+    id: "inventory-lock",
+    title: "库存预占与释放",
+    subtitle: "下单锁库存，超时自动释放",
     difficulty: 5,
-    tags: ['状态机', '乐观锁', '补偿事务'],
-    category: '电商领域',
+    tags: ["状态机", "乐观锁", "补偿事务"],
+    category: "电商领域",
     problem: `库存管理是电商核心，前端也需要理解：
 
 **场景特征（看到这些就该想到状态机+补偿事务）：**
@@ -6851,12 +6885,12 @@ function useCouponEngine(order: Order, availableCoupons: Coupon[]) {
 function ProductPage({ productId }) {
   const [stock, setStock] = useState(0)
   const [loading, setLoading] = useState(false)
-  
+
   // 问题1: 直接显示库存，没有考虑预占
   useEffect(() => {
     fetchStock(productId).then(setStock)
   }, [productId])
-  
+
   // 问题2: 下单时没有锁库存逻辑
   const handleBuy = async () => {
     setLoading(true)
@@ -6873,11 +6907,11 @@ function ProductPage({ productId }) {
       setLoading(false)
     }
   }
-  
+
   // 问题4: 没有库存变化监听
   // 问题5: 没有排队机制
   // 问题6: 没有超时处理
-  
+
   return (
     <div>
       <div>库存: {stock}</div>
@@ -6897,7 +6931,7 @@ interface InventoryState {
   lockedStock: number       // 预占库存
   soldStock: number         // 已售库存
   version: number           // 乐观锁版本号
-  
+
   get availableStock(): number {
     return this.totalStock - this.lockedStock - this.soldStock
   }
@@ -6917,7 +6951,7 @@ interface StockLock {
 
 // ==================== 库存状态机 ====================
 
-type InventoryEvent = 
+type InventoryEvent =
   | { type: 'LOCK'; quantity: number; orderId: string }
   | { type: 'CONFIRM'; lockId: string }
   | { type: 'RELEASE'; lockId: string }
@@ -6928,7 +6962,7 @@ type InventoryStatus = 'available' | 'low_stock' | 'out_of_stock'
 
 const inventoryMachine = {
   initial: 'available' as InventoryStatus,
-  
+
   states: {
     available: {
       on: {
@@ -6965,12 +6999,12 @@ class InventoryService {
   private locks = new Map<string, StockLock>()
   private inventory = new Map<string, InventoryState>()
   private expireTimers = new Map<string, NodeJS.Timeout>()
-  
+
   // 预占库存（乐观锁）
   async lockStock(productId: string, quantity: number, ttl = 1800000): Promise<StockLock> {
     const inventory = this.inventory.get(productId)
     if (!inventory) throw new Error('商品不存在')
-    
+
     // 乐观锁检查
     if (inventory.availableStock < quantity) {
       throw new InventoryError('INSUFFICIENT_STOCK', {
@@ -6978,7 +7012,7 @@ class InventoryService {
         requested: quantity,
       })
     }
-    
+
     const lockId = this.generateLockId()
     const lock: StockLock = {
       lockId,
@@ -6988,14 +7022,14 @@ class InventoryService {
       createdAt: Date.now(),
       expireAt: Date.now() + ttl,
     }
-    
+
     // 原子操作：预占库存
     const newInventory: InventoryState = {
       ...inventory,
       lockedStock: inventory.lockedStock + quantity,
       version: inventory.version + 1,
     }
-    
+
     // CAS检查（Compare-And-Swap）
     if (this.casUpdate(productId, inventory, newInventory)) {
       this.locks.set(lockId, lock)
@@ -7006,15 +7040,15 @@ class InventoryService {
       return this.lockStock(productId, quantity, ttl)
     }
   }
-  
+
   // 确认预占（支付成功后调用）
   async confirmLock(lockId: string, orderId: string): Promise<void> {
     const lock = this.locks.get(lockId)
     if (!lock) throw new Error('锁不存在')
     if (lock.status !== 'pending') throw new Error('锁状态错误')
-    
+
     const inventory = this.inventory.get(lock.productId)!
-    
+
     // 原子操作：将预占转为已售
     const newInventory: InventoryState = {
       ...inventory,
@@ -7022,36 +7056,36 @@ class InventoryService {
       soldStock: inventory.soldStock + lock.quantity,
       version: inventory.version + 1,
     }
-    
+
     if (this.casUpdate(lock.productId, inventory, newInventory)) {
       lock.status = 'confirmed'
       lock.orderId = orderId
       this.cancelExpiration(lockId)
     }
   }
-  
+
   // 释放预占（取消订单或超时）
   async releaseLock(lockId: string): Promise<void> {
     const lock = this.locks.get(lockId)
     if (!lock) return
     if (lock.status !== 'pending') return
-    
+
     const inventory = this.inventory.get(lock.productId)!
-    
+
     // 原子操作：释放预占
     const newInventory: InventoryState = {
       ...inventory,
       lockedStock: inventory.lockedStock - lock.quantity,
       version: inventory.version + 1,
     }
-    
+
     if (this.casUpdate(lock.productId, inventory, newInventory)) {
       lock.status = 'released'
       this.cancelExpiration(lockId)
       this.notifyStockRecovered(lock.productId, lock.quantity)
     }
   }
-  
+
   // 超时自动释放
   private scheduleExpiration(lockId: string, ttl: number) {
     const timer = setTimeout(() => {
@@ -7063,7 +7097,7 @@ class InventoryService {
     }, ttl)
     this.expireTimers.set(lockId, timer)
   }
-  
+
   private cancelExpiration(lockId: string) {
     const timer = this.expireTimers.get(lockId)
     if (timer) {
@@ -7071,11 +7105,11 @@ class InventoryService {
       this.expireTimers.delete(lockId)
     }
   }
-  
+
   // CAS更新
   private casUpdate(
-    productId: string, 
-    expected: InventoryState, 
+    productId: string,
+    expected: InventoryState,
     newInventory: InventoryState
   ): boolean {
     const current = this.inventory.get(productId)
@@ -7085,11 +7119,11 @@ class InventoryService {
     this.inventory.set(productId, newInventory)
     return true
   }
-  
+
   private generateLockId(): string {
     return \`lock_\${Date.now()}_\${Math.random().toString(36).slice(2)}\`
   }
-  
+
   private notifyStockRecovered(productId: string, quantity: number) {
     // 发送库存恢复事件
     eventBus.emit('stock:recovered', { productId, quantity })
@@ -7102,7 +7136,7 @@ function useInventory(productId: string) {
   const [state, setState] = useState<InventoryState | null>(null)
   const [lockInfo, setLockInfo] = useState<StockLock | null>(null)
   const inventoryService = useRef(new InventoryService())
-  
+
   // 订阅库存变化
   useEffect(() => {
     const unsubscribe = eventBus.on('stock:changed', (e) => {
@@ -7110,13 +7144,13 @@ function useInventory(productId: string) {
         setState(e.inventory)
       }
     })
-    
+
     // 初始加载
     inventoryService.current.getInventory(productId).then(setState)
-    
+
     return unsubscribe
   }, [productId])
-  
+
   // 预占库存
   const lockStock = useCallback(async (quantity: number) => {
     try {
@@ -7125,16 +7159,16 @@ function useInventory(productId: string) {
       return { success: true, lock }
     } catch (error) {
       if (error instanceof InventoryError) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: error.code,
-          available: error.data.available 
+          available: error.data.available
         }
       }
       throw error
     }
   }, [productId])
-  
+
   // 取消预占
   const releaseStock = useCallback(async () => {
     if (lockInfo) {
@@ -7142,7 +7176,7 @@ function useInventory(productId: string) {
       setLockInfo(null)
     }
   }, [lockInfo])
-  
+
   return {
     inventory: state,
     lockInfo,
@@ -7157,12 +7191,12 @@ function useInventory(productId: string) {
 function ProductBuyButton({ productId }: { productId: string }) {
   const { inventory, lockStock, releaseStock, isLocked } = useInventory(productId)
   const [status, setStatus] = useState<'idle' | 'locking' | 'paying'>('idle')
-  
+
   const handleBuy = async () => {
     setStatus('locking')
-    
+
     const result = await lockStock(1)
-    
+
     if (!result.success) {
       setStatus('idle')
       if (result.error === 'INSUFFICIENT_STOCK') {
@@ -7170,9 +7204,9 @@ function ProductBuyButton({ productId }: { productId: string }) {
       }
       return
     }
-    
+
     setStatus('paying')
-    
+
     try {
       // 跳转支付页
       const order = await createOrder({ productId, lockId: result.lock.lockId })
@@ -7184,7 +7218,7 @@ function ProductBuyButton({ productId }: { productId: string }) {
       toast.error('下单失败，请重试')
     }
   }
-  
+
   // 组件卸载时释放库存
   useEffect(() => {
     return () => {
@@ -7193,9 +7227,9 @@ function ProductBuyButton({ productId }: { productId: string }) {
       }
     }
   }, [isLocked])
-  
+
   const availableStock = inventory?.availableStock ?? 0
-  
+
   return (
     <div className="space-y-2">
       <div className="text-sm text-gray-500">
@@ -7206,8 +7240,8 @@ function ProductBuyButton({ productId }: { productId: string }) {
           </span>
         )}
       </div>
-      
-      <button 
+
+      <button
         onClick={handleBuy}
         disabled={availableStock <= 0 || status !== 'idle'}
         className="w-full py-3 bg-red-500 text-white rounded-lg disabled:bg-gray-300"
@@ -7216,7 +7250,7 @@ function ProductBuyButton({ productId }: { productId: string }) {
          status === 'paying' ? '正在创建订单...' :
          availableStock > 0 ? '立即购买' : '已售罄'}
       </button>
-      
+
       {isLocked && (
         <div className="text-xs text-orange-500">
           已为您锁定1件库存，请在30分钟内完成支付
@@ -7231,16 +7265,16 @@ function ProductBuyButton({ productId }: { productId: string }) {
 // 2. 超时自动释放
 // 3. 状态机管理库存状态
 // 4. 补偿事务保证一致性`,
-    designPattern: '状态机 + 乐观锁 + 补偿事务模式'
+    designPattern: "状态机 + 乐观锁 + 补偿事务模式",
   },
   // ==================== 金融核心场景 ====================
   {
-    id: 'account-freeze',
-    title: '账户冻结与解冻',
-    subtitle: '资金操作的状态管理',
+    id: "account-freeze",
+    title: "账户冻结与解冻",
+    subtitle: "资金操作的状态管理",
     difficulty: 5,
-    tags: ['状态机', '双写一致性', '幂等性'],
-    category: '金融领域',
+    tags: ["状态机", "双写一致性", "幂等性"],
+    category: "金融领域",
     problem: `金融系统的账户操作要求极高的准确性：
 
 **场景特征（看到这些就该想到状态机+幂等性）：**
@@ -7261,18 +7295,18 @@ function ProductBuyButton({ productId }: { productId: string }) {
 function AccountPage() {
   const [balance, setBalance] = useState(0)
   const [frozen, setFrozen] = useState(0)
-  
+
   // 问题1: 直接修改状态，没有事务
   const handlePay = async (amount: number) => {
     if (balance < amount) {
       alert('余额不足')
       return
     }
-    
+
     // 先冻结
     setFrozen(f => f + amount)
     setBalance(b => b - amount)
-    
+
     try {
       await processPayment(amount)
       // 成功，扣减冻结
@@ -7283,7 +7317,7 @@ function AccountPage() {
       setBalance(b => b + amount)
     }
   }
-  
+
   // 问题2: 并发操作会导致状态不一致
   // 问题3: 没有操作记录
   // 问题4: 没有幂等性保证`,
@@ -7296,7 +7330,7 @@ interface Account {
   balance: number           // 可用余额
   frozenAmount: number      // 冻结金额
   version: number           // 乐观锁版本号
-  
+
   get totalBalance(): number {
     return this.balance + this.frozenAmount
   }
@@ -7319,7 +7353,7 @@ interface Transaction {
 
 // ==================== 账户状态机 ====================
 
-type AccountEvent = 
+type AccountEvent =
   | { type: 'FREEZE'; amount: number; idempotencyKey: string }
   | { type: 'UNFREEZE'; transactionId: string }
   | { type: 'DEDUCT'; transactionId: string }
@@ -7329,11 +7363,11 @@ class AccountStateMachine {
   private account: Account
   private transactions = new Map<string, Transaction>()
   private pendingOperations = new Map<string, Promise<any>>()
-  
+
   constructor(account: Account) {
     this.account = account
   }
-  
+
   // 冻结资金（幂等）
   async freeze(amount: number, idempotencyKey: string): Promise<Transaction> {
     // 幂等性检查
@@ -7341,7 +7375,7 @@ class AccountStateMachine {
     if (existing) {
       return existing  // 已处理过，直接返回
     }
-    
+
     // 余额检查
     if (this.account.balance < amount) {
       throw new AccountError('INSUFFICIENT_BALANCE', {
@@ -7349,9 +7383,9 @@ class AccountStateMachine {
         required: amount,
       })
     }
-    
+
     const transaction = this.createTransaction('freeze', amount, idempotencyKey)
-    
+
     // 状态转换
     const newAccount: Account = {
       ...this.account,
@@ -7359,79 +7393,79 @@ class AccountStateMachine {
       frozenAmount: this.account.frozenAmount + amount,
       version: this.account.version + 1,
     }
-    
+
     await this.applyChange(transaction, newAccount)
     return transaction
   }
-  
+
   // 解冻资金（幂等）
   async unfreeze(transactionId: string): Promise<Transaction> {
     const freezeTx = this.transactions.get(transactionId)
     if (!freezeTx || freezeTx.type !== 'freeze') {
       throw new Error('冻结交易不存在')
     }
-    
+
     if (freezeTx.status !== 'success') {
       throw new Error('冻结交易状态错误')
     }
-    
+
     const idempotencyKey = \`unfreeze_\${transactionId}\`
     const existing = this.findTransactionByIdempotencyKey(idempotencyKey)
     if (existing) return existing
-    
+
     const transaction = this.createTransaction('unfreeze', freezeTx.amount, idempotencyKey, transactionId)
-    
+
     const newAccount: Account = {
       ...this.account,
       balance: this.account.balance + freezeTx.amount,
       frozenAmount: this.account.frozenAmount - freezeTx.amount,
       version: this.account.version + 1,
     }
-    
+
     await this.applyChange(transaction, newAccount)
     return transaction
   }
-  
+
   // 从冻结中扣款（支付成功后）
   async deduct(transactionId: string): Promise<Transaction> {
     const freezeTx = this.transactions.get(transactionId)
     if (!freezeTx || freezeTx.type !== 'freeze') {
       throw new Error('冻结交易不存在')
     }
-    
+
     const idempotencyKey = \`deduct_\${transactionId}\`
     const existing = this.findTransactionByIdempotencyKey(idempotencyKey)
     if (existing) return existing
-    
+
     const transaction = this.createTransaction('deduct', freezeTx.amount, idempotencyKey, transactionId)
-    
+
     const newAccount: Account = {
       ...this.account,
       frozenAmount: this.account.frozenAmount - freezeTx.amount,
       version: this.account.version + 1,
     }
-    
+
     await this.applyChange(transaction, newAccount)
     return transaction
   }
-  
+
   // 入账（充值）
   async credit(amount: number, idempotencyKey: string): Promise<Transaction> {
     const existing = this.findTransactionByIdempotencyKey(idempotencyKey)
     if (existing) return existing
-    
+
     const transaction = this.createTransaction('credit', amount, idempotencyKey)
-    
+
     const newAccount: Account = {
       ...this.account,
       balance: this.account.balance + amount,
       version: this.account.version + 1,
     }
-    
+
     await this.applyChange(transaction, newAccount)
     return transaction
   }
-  
+
   // 创建交易记录
   private createTransaction(
     type: TransactionType,
@@ -7451,44 +7485,44 @@ class AccountStateMachine {
     this.transactions.set(transaction.transactionId, transaction)
     return transaction
   }
-  
+
   // 应用变更（双写一致性）
   private async applyChange(transaction: Transaction, newAccount: Account): Promise<void> {
     try {
       // 1. 先写交易记录
       transaction.status = 'success'
       transaction.completedAt = Date.now()
-      
+
       // 2. 再更新账户状态
       this.account = newAccount
-      
+
       // 3. 发布事件
       eventBus.emit('account:changed', {
         account: this.account,
         transaction,
       })
-      
+
     } catch (error) {
       transaction.status = 'failed'
       throw error
     }
   }
-  
+
   private findTransactionByIdempotencyKey(key: string): Transaction | undefined {
     for (const tx of this.transactions.values()) {
       if (tx.idempotencyKey === key) return tx
     }
     return undefined
   }
-  
+
   private generateTransactionId(): string {
     return \`tx_\${Date.now()}_\${Math.random().toString(36).slice(2, 8)}\`
   }
-  
+
   getAccount(): Account {
     return { ...this.account }
   }
-  
+
   getTransactions(): Transaction[] {
     return Array.from(this.transactions.values())
   }
@@ -7500,38 +7534,38 @@ function useAccount(accountId: string) {
   const [account, setAccount] = useState<Account | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const machineRef = useRef<AccountStateMachine | null>(null)
-  
+
   useEffect(() => {
     // 初始化账户状态机
     fetchAccount(accountId).then(acc => {
       machineRef.current = new AccountStateMachine(acc)
       setAccount(acc)
     })
-    
+
     // 订阅账户变化
     const unsub = eventBus.on('account:changed', (e) => {
       setAccount(e.account)
       setTransactions(prev => [e.transaction, ...prev])
     })
-    
+
     return unsub
   }, [accountId])
-  
+
   const freeze = useCallback(async (amount: number, key?: string) => {
     if (!machineRef.current) throw new Error('账户未初始化')
     return machineRef.current.freeze(amount, key || \`freeze_\${Date.now()}\`)
   }, [])
-  
+
   const unfreeze = useCallback(async (transactionId: string) => {
     if (!machineRef.current) throw new Error('账户未初始化')
     return machineRef.current.unfreeze(transactionId)
   }, [])
-  
+
   const deduct = useCallback(async (transactionId: string) => {
     if (!machineRef.current) throw new Error('账户未初始化')
     return machineRef.current.deduct(transactionId)
   }, [])
-  
+
   return {
     account,
     transactions,
@@ -7546,17 +7580,17 @@ function useAccount(accountId: string) {
 // ==================== 组件使用 ====================
 
 function AccountCard({ accountId }: { accountId: string }) {
-  const { account, availableBalance, frozenAmount, transactions, freeze, unfreeze, deduct } = 
+  const { account, availableBalance, frozenAmount, transactions, freeze, unfreeze, deduct } =
     useAccount(accountId)
-  
+
   const handlePay = async (amount: number) => {
     try {
       // 1. 冻结资金
       const freezeTx = await freeze(amount, \`pay_\${Date.now()}\`)
-      
+
       // 2. 发起支付
       const payResult = await processPayment({ amount, freezeId: freezeTx.transactionId })
-      
+
       if (payResult.success) {
         // 3. 扣款
         await deduct(freezeTx.transactionId)
@@ -7572,7 +7606,7 @@ function AccountCard({ accountId }: { accountId: string }) {
       }
     }
   }
-  
+
   return (
     <div className="space-y-4 p-4 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center">
@@ -7581,14 +7615,14 @@ function AccountCard({ accountId }: { accountId: string }) {
           ¥{availableBalance.toFixed(2)}
         </span>
       </div>
-      
+
       {frozenAmount > 0 && (
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-500">冻结金额</span>
           <span className="text-orange-500">¥{frozenAmount.toFixed(2)}</span>
         </div>
       )}
-      
+
       {/* 最近交易 */}
       <div className="border-t pt-4">
         <h3 className="text-sm font-medium mb-2">最近交易</h3>
@@ -7614,15 +7648,15 @@ function AccountCard({ accountId }: { accountId: string }) {
 // 2. 幂等性防止重复操作
 // 3. 双写一致性保证数据正确
 // 4. 完整的交易记录追溯`,
-    designPattern: '状态机 + 幂等性模式 + 双写一致性'
+    designPattern: "状态机 + 幂等性模式 + 双写一致性",
   },
   {
-    id: 'distributed-id',
-    title: '分布式ID生成',
-    subtitle: '雪花算法在前端的应用',
+    id: "distributed-id",
+    title: "分布式ID生成",
+    subtitle: "雪花算法在前端的应用",
     difficulty: 4,
-    tags: ['雪花算法', '分布式ID', '唯一性'],
-    category: '金融领域',
+    tags: ["雪花算法", "分布式ID", "唯一性"],
+    category: "金融领域",
     problem: `分布式ID生成是分布式系统的基础设施：
 
 **场景特征（看到这些就该想到雪花算法）：**
@@ -7673,25 +7707,25 @@ class SnowflakeIdGenerator {
   private readonly epoch: number       // 起始时间戳（如2024-01-01）
   private readonly workerId: number    // 机器ID (0-31)
   private readonly datacenterId: number // 数据中心ID (0-31)
-  
+
   // 状态
   private sequence = 0
   private lastTimestamp = -1
-  
+
   // 位数配置
   private readonly workerIdBits = 5
   private readonly datacenterIdBits = 5
   private readonly sequenceBits = 12
-  
+
   private readonly maxWorkerId = (1 << this.workerIdBits) - 1  // 31
   private readonly maxDatacenterId = (1 << this.datacenterIdBits) - 1  // 31
   private readonly sequenceMask = (1 << this.sequenceBits) - 1  // 4095
-  
+
   // 位移
   private readonly workerIdShift = this.sequenceBits  // 12
   private readonly datacenterIdShift = this.sequenceBits + this.workerIdBits  // 17
   private readonly timestampLeftShift = this.sequenceBits + this.workerIdBits + this.datacenterIdBits  // 22
-  
+
   constructor(config: {
     epoch?: number           // 起始时间戳
     workerId?: number        // 机器ID
@@ -7700,7 +7734,7 @@ class SnowflakeIdGenerator {
     this.epoch = config.epoch || 1704067200000  // 2024-01-01
     this.workerId = config.workerId ?? this.getWorkerIdFromStorage()
     this.datacenterId = config.datacenterId ?? 0
-    
+
     // 校验
     if (this.workerId > this.maxWorkerId || this.workerId < 0) {
       throw new Error(\`workerId must be between 0 and \${this.maxWorkerId}\`)
@@ -7709,20 +7743,20 @@ class SnowflakeIdGenerator {
       throw new Error(\`datacenterId must be between 0 and \${this.maxDatacenterId}\`)
     }
   }
-  
+
   // 生成下一个ID
   nextId(): string {
     let timestamp = this.currentTimeMillis()
-    
+
     // 时钟回拨检测
     if (timestamp < this.lastTimestamp) {
       throw new Error(\`Clock moved backwards. Refusing to generate id for \${this.lastTimestamp - timestamp}ms\`)
     }
-    
+
     // 同一毫秒内
     if (timestamp === this.lastTimestamp) {
       this.sequence = (this.sequence + 1) & this.sequenceMask
-      
+
       // 序列号溢出，等待下一毫秒
       if (this.sequence === 0) {
         timestamp = this.waitNextMillis(this.lastTimestamp)
@@ -7731,27 +7765,27 @@ class SnowflakeIdGenerator {
       // 新毫秒，序列号重置
       this.sequence = 0
     }
-    
+
     this.lastTimestamp = timestamp
-    
+
     // 组装ID
     const id = ((timestamp - this.epoch) << this.timestampLeftShift)
       | (this.datacenterId << this.datacenterIdShift)
       | (this.workerId << this.workerIdShift)
       | this.sequence
-    
+
     return id.toString()
   }
-  
+
   // 解析ID信息
   parseId(id: string): IdInfo {
     const num = BigInt(id)
-    
+
     const timestamp = Number((num >> BigInt(this.timestampLeftShift)) + BigInt(this.epoch))
     const datacenterId = Number((num >> BigInt(this.datacenterIdShift)) & BigInt(this.maxDatacenterId))
     const workerId = Number((num >> BigInt(this.workerIdShift)) & BigInt(this.maxWorkerId))
     const sequence = Number(num & BigInt(this.sequenceMask))
-    
+
     return {
       id,
       timestamp: new Date(timestamp),
@@ -7761,11 +7795,11 @@ class SnowflakeIdGenerator {
       date: new Date(timestamp).toISOString(),
     }
   }
-  
+
   private currentTimeMillis(): number {
     return Date.now()
   }
-  
+
   private waitNextMillis(lastTimestamp: number): number {
     let timestamp = this.currentTimeMillis()
     while (timestamp <= lastTimestamp) {
@@ -7773,12 +7807,12 @@ class SnowflakeIdGenerator {
     }
     return timestamp
   }
-  
+
   private getWorkerIdFromStorage(): number {
     // 从localStorage获取或生成workerId
     const stored = localStorage.getItem('snowflake_worker_id')
     if (stored) return parseInt(stored, 10)
-    
+
     const workerId = Math.floor(Math.random() * this.maxWorkerId)
     localStorage.setItem('snowflake_worker_id', workerId.toString())
     return workerId
@@ -7798,46 +7832,46 @@ interface IdInfo {
 
 class BusinessIdGenerator {
   private snowflake: SnowflakeIdGenerator
-  
+
   constructor() {
     this.snowflake = new SnowflakeIdGenerator()
   }
-  
+
   // 订单ID
   orderId(): string {
     return 'ORD' + this.snowflake.nextId()
   }
-  
+
   // 交易流水号
   transactionId(): string {
     return 'TXN' + this.snowflake.nextId()
   }
-  
+
   // 支付流水号
   paymentId(): string {
     return 'PAY' + this.snowflake.nextId()
   }
-  
+
   // 退款流水号
   refundId(): string {
     return 'RFD' + this.snowflake.nextId()
   }
-  
+
   // 用户ID（注册时前端生成）
   userId(): string {
     return 'USR' + this.snowflake.nextId()
   }
-  
+
   // 追踪ID（用于日志追踪）
   traceId(): string {
     return 'TRC' + this.snowflake.nextId()
   }
-  
+
   // 临时ID（用于前端临时标识）
   tempId(): string {
     return 'TMP' + this.snowflake.nextId()
   }
-  
+
   // 解析ID
   parse(id: string): IdInfo & { type: string } {
     const type = id.slice(0, 3)
@@ -7861,15 +7895,15 @@ function useIdGenerator() {
 function OrderCreateForm() {
   const idGen = useIdGenerator()
   const [orderId, setOrderId] = useState<string>('')
-  
+
   const handleCreateOrder = async () => {
     // 前端预生成订单ID
     const newOrderId = idGen.orderId()
     setOrderId(newOrderId)
-    
+
     // 可以在创建前就记录日志
     console.log(\`Creating order \${newOrderId} at \${new Date().toISOString()}\`)
-    
+
     try {
       await createOrder({
         orderId: newOrderId,
@@ -7880,7 +7914,7 @@ function OrderCreateForm() {
       console.error(\`Order \${newOrderId} creation failed:\`, error)
     }
   }
-  
+
   return (
     <div>
       <button onClick={handleCreateOrder}>创建订单</button>
@@ -7894,15 +7928,15 @@ function OrderCreateForm() {
 // 2. 时间有序，便于排序
 // 3. 包含业务前缀，可读性强
 // 4. 支持解析，便于排查问题`,
-    designPattern: '雪花算法 + 工厂模式'
+    designPattern: "雪花算法 + 工厂模式",
   },
   {
-    id: 'quote-merge',
-    title: '报价推送与合并',
-    subtitle: '高频数据更新优化',
+    id: "quote-merge",
+    title: "报价推送与合并",
+    subtitle: "高频数据更新优化",
     difficulty: 5,
-    tags: ['数据合并', '虚拟DOM', '批量更新'],
-    category: '金融领域',
+    tags: ["数据合并", "虚拟DOM", "批量更新"],
+    category: "金融领域",
     problem: `金融行情数据推送是典型的高频更新场景：
 
 **场景特征（看到这些就该想到数据合并+批量更新）：**
@@ -7921,13 +7955,13 @@ function OrderCreateForm() {
     badCode: `// ❌ 典型屎山：每次推送都setState
 function StockList({ symbols }: { symbols: string[] }) {
   const [quotes, setQuotes] = useState<Map<string, Quote>>(new Map())
-  
+
   useEffect(() => {
     const ws = new WebSocket('wss://quotes.example.com')
-    
+
     ws.onmessage = (event) => {
       const quote: Quote = JSON.parse(event.data)
-      
+
       // 问题1: 每条消息都setState，触发重渲染
       setQuotes(prev => {
         const next = new Map(prev)
@@ -7935,14 +7969,14 @@ function StockList({ symbols }: { symbols: string[] }) {
         return next  // 每次都创建新Map，触发渲染
       })
     }
-    
+
     return () => ws.close()
   }, [])
-  
+
   // 问题2: 整个列表重新渲染
   // 问题3: 高频推送时页面卡死
   // 问题4: 没有数据合并
-  
+
   return (
     <div>
       {symbols.map(symbol => (
@@ -7983,7 +8017,7 @@ class QuoteManager {
   private subscribers = new Set<(quotes: Map<string, Quote>) => void>()
   private batchTimer: NodeJS.Timeout | null = null
   private readonly batchInterval = 50  // 50ms批处理
-  
+
   // 接收更新（高频调用）
   receiveUpdate(symbol: string, update: Partial<Quote>) {
     // 合并到待处理队列
@@ -7998,32 +8032,32 @@ class QuoteManager {
         timestamp: Date.now(),
       })
     }
-    
+
     // 触发批处理
     this.scheduleBatch()
   }
-  
+
   // 批量接收
   receiveBatchUpdates(updates: Array<{ symbol: string; data: Partial<Quote> }>) {
     for (const { symbol, data } of updates) {
       this.receiveUpdate(symbol, data)
     }
   }
-  
+
   // 调度批处理
   private scheduleBatch() {
     if (this.batchTimer) return
-    
+
     this.batchTimer = setTimeout(() => {
       this.flush()
       this.batchTimer = null
     }, this.batchInterval)
   }
-  
+
   // 立即刷新
   flush() {
     if (this.pendingUpdates.size === 0) return
-    
+
     // 合并更新到主数据
     for (const [symbol, update] of this.pendingUpdates) {
       const existing = this.quotes.get(symbol)
@@ -8039,20 +8073,20 @@ class QuoteManager {
         this.quotes.set(symbol, update.partial as Quote)
       }
     }
-    
+
     // 清空待处理
     this.pendingUpdates.clear()
-    
+
     // 通知订阅者（只触发一次）
     this.notify()
   }
-  
+
   // 订阅变化
   subscribe(callback: (quotes: Map<string, Quote>) => void): () => void {
     this.subscribers.add(callback)
     return () => this.subscribers.delete(callback)
   }
-  
+
   // 通知订阅者
   private notify() {
     const snapshot = new Map(this.quotes)
@@ -8060,12 +8094,12 @@ class QuoteManager {
       callback(snapshot)
     }
   }
-  
+
   // 获取单支股票
   getQuote(symbol: string): Quote | undefined {
     return this.quotes.get(symbol)
   }
-  
+
   // 获取所有报价
   getQuotes(): Map<string, Quote> {
     return new Map(this.quotes)
@@ -8081,23 +8115,23 @@ class QuoteWebSocket {
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
   private heartbeatTimer: NodeJS.Timeout | null = null
-  
+
   constructor(quoteManager: QuoteManager) {
     this.quoteManager = quoteManager
   }
-  
+
   connect(url: string) {
     this.ws = new WebSocket(url)
-    
+
     this.ws.onopen = () => {
       console.log('WebSocket connected')
       this.reconnectAttempts = 0
       this.startHeartbeat()
     }
-    
+
     this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      
+
       if (Array.isArray(data)) {
         // 批量推送
         this.quoteManager.receiveBatchUpdates(
@@ -8108,34 +8142,34 @@ class QuoteWebSocket {
         this.quoteManager.receiveUpdate(data.s, this.transformQuote(data))
       }
     }
-    
+
     this.ws.onclose = () => {
       console.log('WebSocket closed')
       this.stopHeartbeat()
       this.reconnect(url)
     }
-    
+
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error)
     }
   }
-  
+
   // 订阅股票
   subscribe(symbols: string[]) {
     this.send({ action: 'subscribe', symbols })
   }
-  
+
   // 取消订阅
   unsubscribe(symbols: string[]) {
     this.send({ action: 'unsubscribe', symbols })
   }
-  
+
   private send(data: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
     }
   }
-  
+
   private transformQuote(data: any): Partial<Quote> {
     return {
       symbol: data.s,
@@ -8147,36 +8181,36 @@ class QuoteWebSocket {
       timestamp: data.ts,
     }
   }
-  
+
   private startHeartbeat() {
     this.heartbeatTimer = setInterval(() => {
       this.send({ action: 'ping' })
     }, 30000)
   }
-  
+
   private stopHeartbeat() {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer)
       this.heartbeatTimer = null
     }
   }
-  
+
   private reconnect(url: string) {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnect attempts reached')
       return
     }
-    
+
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-    
+
     console.log(\`Reconnecting in \${delay}ms (attempt \${this.reconnectAttempts})\`)
-    
+
     setTimeout(() => {
       this.connect(url)
     }, delay)
   }
-  
+
   disconnect() {
     this.stopHeartbeat()
     this.ws?.close()
@@ -8190,39 +8224,39 @@ function useQuotes(symbols: string[]) {
   const [quotes, setQuotes] = useState<Map<string, Quote>>(new Map())
   const managerRef = useRef<QuoteManager>()
   const wsRef = useRef<QuoteWebSocket>()
-  
+
   useEffect(() => {
     // 创建管理器
     managerRef.current = new QuoteManager()
-    
+
     // 订阅更新（防抖后的批量更新）
     const unsubscribe = managerRef.current.subscribe((newQuotes) => {
       setQuotes(newQuotes)
     })
-    
+
     // 创建WebSocket
     wsRef.current = new QuoteWebSocket(managerRef.current)
     wsRef.current.connect('wss://quotes.example.com')
-    
+
     return () => {
       unsubscribe()
       wsRef.current?.disconnect()
     }
   }, [])
-  
+
   // 订阅股票
   useEffect(() => {
     if (symbols.length > 0) {
       wsRef.current?.subscribe(symbols)
     }
-    
+
     return () => {
       if (symbols.length > 0) {
         wsRef.current?.unsubscribe(symbols)
       }
     }
   }, [symbols])
-  
+
   return {
     quotes,
     getQuote: (symbol: string) => quotes.get(symbol),
@@ -8234,7 +8268,7 @@ function useQuotes(symbols: string[]) {
 
 const StockCard = memo(function StockCard({ quote }: { quote: Quote }) {
   const isUp = quote.change >= 0
-  
+
   return (
     <div className="flex justify-between items-center p-2 border-b">
       <span className="font-medium">{quote.symbol}</span>
@@ -8248,7 +8282,7 @@ const StockCard = memo(function StockCard({ quote }: { quote: Quote }) {
   )
 }, (prev, next) => {
   // 自定义比较：只有价格或涨跌幅变化才重渲染
-  return prev.quote.price === next.quote.price && 
+  return prev.quote.price === next.quote.price &&
          prev.quote.changePercent === next.quote.changePercent
 })
 
@@ -8257,7 +8291,7 @@ const StockCard = memo(function StockCard({ quote }: { quote: Quote }) {
 function StockWatchlist() {
   const symbols = ['AAPL', 'GOOGL', 'TSLA', 'MSFT', 'AMZN']
   const { quotes } = useQuotes(symbols)
-  
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b">
@@ -8279,16 +8313,16 @@ function StockWatchlist() {
 // 2. 50ms批处理间隔，减少渲染次数
 // 3. 增量更新，减少数据传输
 // 4. memo + 自定义比较，减少重渲染`,
-    designPattern: '数据合并模式 + 批量更新模式 + 观察者模式'
+    designPattern: "数据合并模式 + 批量更新模式 + 观察者模式",
   },
   // ==================== 企业级场景 ====================
   {
-    id: 'data-permission',
-    title: '数据权限过滤',
-    subtitle: '行级权限与字段脱敏',
+    id: "data-permission",
+    title: "数据权限过滤",
+    subtitle: "行级权限与字段脱敏",
     difficulty: 5,
-    tags: ['策略模式', '组合模式', 'AOP'],
-    category: '企业级场景',
+    tags: ["策略模式", "组合模式", "AOP"],
+    category: "企业级场景",
     problem: `企业级应用常见的数据权限需求：
 
 **场景特征（看到这些就该想到策略模式+AOP）：**
@@ -8309,12 +8343,12 @@ function StockWatchlist() {
 function OrderList() {
   const user = useCurrentUser()
   const [orders, setOrders] = useState([])
-  
+
   useEffect(() => {
     fetchOrders().then(data => {
       // 问题1: 权限判断写死在组件里
       let filtered = data
-      
+
       if (user.role === 'sales') {
         filtered = data.filter(o => o.salesId === user.id)
       } else if (user.role === 'manager') {
@@ -8329,11 +8363,11 @@ function OrderList() {
       }
       // 问题3: 新增角色要改代码
       // 问题4: 同一逻辑要在多处复制
-      
+
       setOrders(filtered)
     })
   }, [user])
-  
+
   return <Table data={orders} />
 }`,
     goodCode: `// ✅ 优雅设计：策略模式 + 组合模式 + AOP
@@ -8423,14 +8457,14 @@ const maskStrategies = new Map<string, MaskStrategy>([
 class DataPermissionFilter {
   private permissions = new Map<string, DataPermission[]>()
   private maskStrategies = maskStrategies
-  
+
   // 配置权限
   configure(role: string, permission: DataPermission) {
     const existing = this.permissions.get(role) || []
     existing.push(permission)
     this.permissions.set(role, existing)
   }
-  
+
   // 过滤数据（行级权限）
   filterRows<T extends Record<string, any>>(
     data: T[],
@@ -8439,42 +8473,42 @@ class DataPermissionFilter {
   ): T[] {
     const permission = this.getPermission(user.role, resource)
     if (!permission) return data
-    
+
     let result = data
-    
+
     // 根据scope过滤
     switch (permission.scope) {
       case 'all':
         break  // 不过滤
       case 'department':
-        result = data.filter(item => 
+        result = data.filter(item =>
           item.departmentId === user.departmentId
         )
         break
       case 'team':
-        result = data.filter(item => 
+        result = data.filter(item =>
           user.teamIds?.includes(item.teamId)
         )
         break
       case 'self':
-        result = data.filter(item => 
+        result = data.filter(item =>
           item.creatorId === user.id || item.ownerId === user.id
         )
         break
     }
-    
+
     // 应用额外条件
     if (permission.conditions) {
       for (const cond of permission.conditions) {
-        result = result.filter(item => 
+        result = result.filter(item =>
           this.evaluateCondition(item, cond, user)
         )
       }
     }
-    
+
     return result
   }
-  
+
   // 过滤字段（字段脱敏）
   filterFields<T extends Record<string, any>>(
     data: T,
@@ -8483,9 +8517,9 @@ class DataPermissionFilter {
   ): T {
     const permission = this.getPermission(user.role, resource)
     if (!permission) return data
-    
+
     let result = { ...data }
-    
+
     // 字段白名单
     if (permission.fields) {
       const allowed = new Set(permission.fields)
@@ -8495,22 +8529,22 @@ class DataPermissionFilter {
         }
       }
     }
-    
+
     // 字段脱敏
     if (permission.maskedFields) {
       for (const mask of permission.maskedFields) {
         if (result[mask.field] !== undefined) {
           result[mask.field] = this.maskValue(
-            result[mask.field], 
+            result[mask.field],
             mask
           )
         }
       }
     }
-    
+
     return result
   }
-  
+
   // 批量处理
   process<T extends Record<string, any>>(
     data: T[],
@@ -8522,15 +8556,15 @@ class DataPermissionFilter {
     // 再过滤字段
     return filtered.map(item => this.filterFields(item, resource, user))
   }
-  
+
   private getPermission(role: string, resource: string): DataPermission | undefined {
     const permissions = this.permissions.get(role) || []
     return permissions.find(p => p.resource === resource)
   }
-  
+
   private evaluateCondition(item: any, condition: Condition, user: User): boolean {
     const value = this.resolveValue(item, condition.field, user)
-    
+
     switch (condition.operator) {
       case 'eq': return value === condition.value
       case 'ne': return value !== condition.value
@@ -8541,7 +8575,7 @@ class DataPermissionFilter {
       default: return true
     }
   }
-  
+
   private resolveValue(item: any, field: string, user: User): any {
     // 支持 $user.id 这样的动态值
     if (field.startsWith('$user.')) {
@@ -8550,15 +8584,15 @@ class DataPermissionFilter {
     }
     return item[field]
   }
-  
+
   private maskValue(value: string, config: FieldMask): string {
     const strategy = this.maskStrategies.get(config.type)
     if (!strategy) return value
-    
+
     if (config.type === 'custom' && config.pattern) {
       return value.replace(new RegExp(config.pattern), '***')
     }
-    
+
     return strategy.mask(value, config)
   }
 }
@@ -8609,14 +8643,14 @@ permissionFilter.configure('admin', {
 function useDataPermission() {
   const user = useCurrentUser()
   const filter = useRef(permissionFilter)
-  
+
   const process = useCallback(<T extends Record<string, any>>(
     data: T[],
     resource: string
   ): T[] => {
     return filter.current.process(data, resource, user)
   }, [user])
-  
+
   return { process }
 }
 
@@ -8641,7 +8675,7 @@ const fetchOrdersWithPermission = withPermission('order', fetchOrders)
 function OrderList() {
   const [orders, setOrders] = useState<Order[]>([])
   const { process } = useDataPermission()
-  
+
   useEffect(() => {
     fetchOrders().then(data => {
       // 自动应用权限过滤
@@ -8649,7 +8683,7 @@ function OrderList() {
       setOrders(filtered)
     })
   }, [process])
-  
+
   return <Table data={orders} />
 }
 
@@ -8658,15 +8692,15 @@ function OrderList() {
 // 2. 新增角色只需加配置
 // 3. 行级权限+字段脱敏统一处理
 // 4. AOP方式无侵入`,
-    designPattern: '策略模式 + 组合模式 + AOP切面编程'
+    designPattern: "策略模式 + 组合模式 + AOP切面编程",
   },
   {
-    id: 'audit-trail',
-    title: '操作审计追踪',
-    subtitle: '完整的操作日志链',
+    id: "audit-trail",
+    title: "操作审计追踪",
+    subtitle: "完整的操作日志链",
     difficulty: 4,
-    tags: ['责任链', '观察者', '装饰器'],
-    category: '企业级场景',
+    tags: ["责任链", "观察者", "装饰器"],
+    category: "企业级场景",
     problem: `企业级应用需要完整的操作追踪：
 
 **场景特征（看到这些就该想到装饰器+观察者）：**
@@ -8687,9 +8721,9 @@ function OrderList() {
 async function updateOrderStatus(orderId: string, status: string) {
   // 问题1: 日志记录散落在业务代码里
   console.log(\`Update order \${orderId} status to \${status}\`)
-  
+
   await updateOrder(orderId, { status })
-  
+
   // 问题2: 没有统一格式
   await saveLog({
     action: 'update_order',
@@ -8698,7 +8732,7 @@ async function updateOrderStatus(orderId: string, status: string) {
     time: new Date(),
     user: currentUser.id
   })
-  
+
   // 问题3: 没有记录变更前后的值
   // 问题4: 没有关联上下游操作
   // 问题5: 每个操作都要手动写日志`,
@@ -8710,12 +8744,12 @@ interface AuditLog {
   id: string
   traceId: string           // 链路追踪ID
   parentLogId?: string      // 父操作ID（用于关联）
-  
+
   // 操作信息
   action: string            // 操作类型
   resource: string          // 资源类型
   resourceId: string        // 资源ID
-  
+
   // 操作人
   operator: {
     userId: string
@@ -8724,25 +8758,25 @@ interface AuditLog {
     ip: string
     userAgent: string
   }
-  
+
   // 变更详情
   changes: {
     field: string
     oldValue: any
     newValue: any
   }[]
-  
+
   // 上下文
   context: {
     module: string          // 模块
     feature: string         // 功能
     correlationId?: string  // 关联ID（如订单号）
   }
-  
+
   // 时间
   timestamp: number
   duration?: number         // 操作耗时
-  
+
   // 结果
   result: 'success' | 'failed'
   errorMessage?: string
@@ -8752,26 +8786,26 @@ interface AuditLog {
 
 class AuditContext {
   private static current: AuditContext | null = null
-  
+
   traceId: string
   parentLogId?: string
   logs: AuditLog[] = []
   startTime: number
-  
+
   constructor(traceId?: string) {
     this.traceId = traceId || this.generateTraceId()
     this.startTime = Date.now()
   }
-  
+
   static start(traceId?: string): AuditContext {
     this.current = new AuditContext(traceId)
     return this.current
   }
-  
+
   static getCurrent(): AuditContext | null {
     return this.current
   }
-  
+
   static end() {
     if (this.current) {
       // 批量保存日志
@@ -8779,7 +8813,7 @@ class AuditContext {
       this.current = null
     }
   }
-  
+
   addLog(log: Omit<AuditLog, 'id' | 'traceId' | 'parentLogId'>) {
     const fullLog: AuditLog = {
       id: this.generateLogId(),
@@ -8790,11 +8824,11 @@ class AuditContext {
     this.logs.push(fullLog)
     return fullLog.id
   }
-  
+
   private generateTraceId(): string {
     return \`trace_\${Date.now()}_\${Math.random().toString(36).slice(2, 8)}\`
   }
-  
+
   private generateLogId(): string {
     return \`log_\${Date.now()}_\${Math.random().toString(36).slice(2, 8)}\`
   }
@@ -8813,26 +8847,26 @@ function auditable(config: {
     descriptor: PropertyDescriptor
   ) {
     const original = descriptor.value
-    
+
     descriptor.value = async function (...args: any[]) {
       const user = getCurrentUser()
       const context = AuditContext.getCurrent() || AuditContext.start()
       const startTime = Date.now()
-      
+
       let oldValue: any = null
       if (config.trackChanges && args[0]) {
         // 获取变更前的值
         oldValue = await this.getResource(args[0])
       }
-      
+
       try {
         const result = await original.apply(this, args)
-        
+
         // 记录成功日志
-        const changes = config.trackChanges 
+        const changes = config.trackChanges
           ? diffObjects(oldValue, result)
           : []
-        
+
         context.addLog({
           action: config.action,
           resource: config.resource,
@@ -8853,9 +8887,9 @@ function auditable(config: {
           duration: Date.now() - startTime,
           result: 'success',
         })
-        
+
         return result
-        
+
       } catch (error) {
         // 记录失败日志
         context.addLog({
@@ -8879,11 +8913,11 @@ function auditable(config: {
           result: 'failed',
           errorMessage: error.message,
         })
-        
+
         throw error
       }
     }
-    
+
     return descriptor
   }
 }
@@ -8896,14 +8930,14 @@ class OrderService {
     // 业务逻辑，审计自动处理
     return await this.orderRepository.create(data)
   }
-  
+
   @auditable({ action: 'update_status', resource: 'order', trackChanges: true })
   async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
     const order = await this.orderRepository.findById(orderId)
     order.status = status
     return await this.orderRepository.save(order)
   }
-  
+
   @auditable({ action: 'cancel', resource: 'order', trackChanges: true })
   async cancelOrder(orderId: string, reason: string): Promise<Order> {
     const order = await this.orderRepository.findById(orderId)
@@ -8918,7 +8952,7 @@ class OrderService {
 function useAuditTrail(resource: string, resourceId: string) {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(false)
-  
+
   const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
@@ -8933,11 +8967,11 @@ function useAuditTrail(resource: string, resourceId: string) {
       setLoading(false)
     }
   }, [resource, resourceId])
-  
+
   useEffect(() => {
     fetchLogs()
   }, [fetchLogs])
-  
+
   return { logs, loading, refresh: fetchLogs }
 }
 
@@ -8945,24 +8979,24 @@ function useAuditTrail(resource: string, resourceId: string) {
 
 function AuditTimeline({ resource, resourceId }: { resource: string; resourceId: string }) {
   const { logs, loading } = useAuditTrail(resource, resourceId)
-  
+
   if (loading) return <div>Loading...</div>
-  
+
   return (
     <div className="space-y-4">
       <h3 className="font-bold">操作记录</h3>
-      
+
       <div className="relative">
         {/* 时间线 */}
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
-        
+
         {logs.map((log, index) => (
           <div key={log.id} className="relative pl-10 pb-4">
             {/* 节点 */}
-            <div className={\`absolute left-2 w-4 h-4 rounded-full 
+            <div className={\`absolute left-2 w-4 h-4 rounded-full
               \${log.result === 'success' ? 'bg-green-500' : 'bg-red-500'}\`}
             />
-            
+
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -8975,11 +9009,11 @@ function AuditTimeline({ resource, resourceId }: { resource: string; resourceId:
                   {log.duration}ms
                 </span>
               </div>
-              
+
               <div className="text-sm text-gray-500 mt-1">
                 操作人: {log.operator.userName} ({log.operator.role})
               </div>
-              
+
               {log.changes.length > 0 && (
                 <div className="mt-2 text-sm">
                   {log.changes.map((change, i) => (
@@ -8992,7 +9026,7 @@ function AuditTimeline({ resource, resourceId }: { resource: string; resourceId:
                   ))}
                 </div>
               )}
-              
+
               {log.result === 'failed' && (
                 <div className="mt-2 text-sm text-red-500">
                   失败原因: {log.errorMessage}
@@ -9011,15 +9045,15 @@ function AuditTimeline({ resource, resourceId }: { resource: string; resourceId:
 // 2. 自动记录操作日志
 // 3. 支持变更追踪
 // 4. 链路关联便于排查`,
-    designPattern: '装饰器模式 + 责任链模式 + 观察者模式'
+    designPattern: "装饰器模式 + 责任链模式 + 观察者模式",
   },
   {
-    id: 'multi-tenant',
-    title: '多租户数据隔离',
-    subtitle: 'SaaS架构核心设计',
+    id: "multi-tenant",
+    title: "多租户数据隔离",
+    subtitle: "SaaS架构核心设计",
     difficulty: 5,
-    tags: ['租户隔离', '上下文传播', '数据路由'],
-    category: '企业级场景',
+    tags: ["租户隔离", "上下文传播", "数据路由"],
+    category: "企业级场景",
     problem: `SaaS平台的多租户隔离是架构核心：
 
 **场景特征（看到这些就该想到租户上下文）：**
@@ -9044,12 +9078,12 @@ function fetchOrders(tenantId: string) {
 function OrderList({ tenantId }: { tenantId: string }) {
   // 问题1: 每个组件都要传tenantId
   const [orders, setOrders] = useState([])
-  
+
   useEffect(() => {
     // 问题2: 每个请求都要带tenantId
     fetchOrders(tenantId).then(setOrders)
   }, [tenantId])
-  
+
   return (
     <div>
       {/* 问题3: 子组件又要继续传 */}
@@ -9071,27 +9105,27 @@ interface Tenant {
   name: string
   slug: string              // 租户标识
   plan: 'free' | 'pro' | 'enterprise'
-  
+
   // 配置
   config: TenantConfig
-  
+
   // 配额
   quota: {
     users: number
     storage: number         // MB
     apiCalls: number        // 每月
   }
-  
+
   // 主题
   theme: {
     primaryColor: string
     logo: string
     favicon: string
   }
-  
+
   // 功能开关
   features: Record<string, boolean>
-  
+
   // 状态
   status: 'active' | 'suspended' | 'trial'
   trialEndsAt?: number
@@ -9121,7 +9155,7 @@ const TenantContext = createContext<{
 function TenantProvider({ children }: { children: React.ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   // 初始化：从域名或localStorage获取租户
   useEffect(() => {
     const tenantSlug = getTenantSlugFromDomain() || localStorage.getItem('tenant_slug')
@@ -9131,7 +9165,7 @@ function TenantProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }, [])
-  
+
   const loadTenant = async (slug: string) => {
     setLoading(true)
     try {
@@ -9143,11 +9177,11 @@ function TenantProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }
-  
+
   const switchTenant = async (tenantId: string) => {
     await loadTenant(tenantId)
   }
-  
+
   return (
     <TenantContext.Provider value={{ tenant, loading, switchTenant }}>
       {children}
@@ -9177,42 +9211,42 @@ function useTenantRequired() {
 class TenantHttpClient {
   private baseUrl: string
   private tenantGetter: () => string | null
-  
+
   constructor(config: { baseUrl: string; tenantGetter: () => string | null }) {
     this.baseUrl = config.baseUrl
     this.tenantGetter = config.tenantGetter
   }
-  
+
   async request<T>(url: string, options: RequestInit = {}): Promise<T> {
     const tenantId = this.tenantGetter()
-    
+
     const headers = new Headers(options.headers)
-    
+
     // 自动注入租户头
     if (tenantId) {
       headers.set('X-Tenant-Id', tenantId)
     }
-    
+
     // 添加租户前缀到URL
     const tenantPrefix = tenantId ? \`/t/\${tenantId}\` : ''
     const fullUrl = \`\${this.baseUrl}\${tenantPrefix}\${url}\`
-    
+
     const response = await fetch(fullUrl, {
       ...options,
       headers,
     })
-    
+
     if (!response.ok) {
       throw new ApiError(response.status, await response.text())
     }
-    
+
     return response.json()
   }
-  
+
   get<T>(url: string) {
     return this.request<T>(url, { method: 'GET' })
   }
-  
+
   post<T>(url: string, data: any) {
     return this.request<T>(url, {
       method: 'POST',
@@ -9225,43 +9259,43 @@ class TenantHttpClient {
 
 class TenantStorage {
   private tenantGetter: () => string | null
-  
+
   constructor(tenantGetter: () => string | null) {
     this.tenantGetter = tenantGetter
   }
-  
+
   private getKey(key: string): string {
     const tenantId = this.tenantGetter()
     return tenantId ? \`tenant:\${tenantId}:\${key}\` : key
   }
-  
+
   get<T>(key: string): T | null {
     const data = localStorage.getItem(this.getKey(key))
     return data ? JSON.parse(data) : null
   }
-  
+
   set<T>(key: string, value: T): void {
     localStorage.setItem(this.getKey(key), JSON.stringify(value))
   }
-  
+
   remove(key: string): void {
     localStorage.removeItem(this.getKey(key))
   }
-  
+
   clearTenantData(): void {
     const tenantId = this.tenantGetter()
     if (!tenantId) return
-    
+
     const prefix = \`tenant:\${tenantId}:\`
     const keysToRemove: string[] = []
-    
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (key?.startsWith(prefix)) {
         keysToRemove.push(key)
       }
     }
-    
+
     keysToRemove.forEach(key => localStorage.removeItem(key))
   }
 }
@@ -9271,31 +9305,31 @@ class TenantStorage {
 class TenantQuotaManager {
   private tenant: Tenant
   private usage: Map<string, number> = new Map()
-  
+
   constructor(tenant: Tenant) {
     this.tenant = tenant
   }
-  
+
   // 检查是否超出配额
   canUse(resource: 'users' | 'storage' | 'apiCalls', amount: number = 1): boolean {
     const quota = this.tenant.quota[resource]
     const used = this.usage.get(resource) || 0
     return used + amount <= quota
   }
-  
+
   // 记录使用
   recordUsage(resource: string, amount: number = 1): void {
     const current = this.usage.get(resource) || 0
     this.usage.set(resource, current + amount)
   }
-  
+
   // 获取剩余配额
   getRemaining(resource: string): number {
     const quota = (this.tenant.quota as any)[resource]
     const used = this.usage.get(resource) || 0
     return Math.max(0, quota - used)
   }
-  
+
   // 检查功能是否可用
   hasFeature(feature: string): boolean {
     return this.tenant.features[feature] === true
@@ -9306,12 +9340,12 @@ class TenantQuotaManager {
 
 function useTenantApi() {
   const { tenant } = useTenant()
-  
+
   const client = useMemo(() => new TenantHttpClient({
     baseUrl: '/api',
     tenantGetter: () => tenant?.id || null,
   }), [tenant?.id])
-  
+
   return client
 }
 
@@ -9320,33 +9354,33 @@ function OrderList() {
   const api = useTenantApi()
   const quota = useMemo(() => new TenantQuotaManager(tenant), [tenant])
   const [orders, setOrders] = useState([])
-  
+
   // 不需要传租户ID，自动处理
   useEffect(() => {
     api.get('/orders').then(setOrders)
   }, [api])
-  
+
   // 配额检查
   const canCreateOrder = quota.canUse('apiCalls', 1)
-  
+
   // 功能开关
   const canExport = quota.hasFeature('order_export')
-  
+
   return (
     <div>
       <h1 className="text-2xl font-bold" style={{ color: tenant.theme.primaryColor }}>
         {tenant.name} - 订单列表
       </h1>
-      
+
       {/* 配额提示 */}
       {quota.getRemaining('apiCalls') < 100 && (
         <div className="text-orange-500">
           API调用次数即将用尽，剩余 {quota.getRemaining('apiCalls')} 次
         </div>
       )}
-      
+
       <Table data={orders} />
-      
+
       <div className="flex gap-2">
         <button disabled={!canCreateOrder}>创建订单</button>
         {canExport && <button>导出</button>}
@@ -9369,63 +9403,70 @@ function App() {
 // 2. 数据隔离自动处理
 // 3. 配额管理集中化
 // 4. 主题定制自动化`,
-    designPattern: '上下文模式 + 数据路由模式 + 策略模式'
-  }
-]
+    designPattern: "上下文模式 + 数据路由模式 + 策略模式",
+  },
+];
 
 // ==================== Demo 组件 ====================
 const demos: Record<string, () => JSX.Element> = {
   onion: function OnionDemo() {
     return (
-    <div className="space-y-4">
-      <div className="text-sm text-gray-400">洋葱模型：请求从外到内，响应从内到外</div>
-      <div className="relative w-48 h-48 mx-auto">
-        {['日志', '埋点', '缓存', '请求'].map((label, i) => (
-          <div key={i} className={`absolute rounded-full border-2 flex items-center justify-center
-            ${i === 0 ? 'inset-0 border-red-400' : ''}
-            ${i === 1 ? 'inset-4 border-yellow-400' : ''}
-            ${i === 2 ? 'inset-8 border-green-400' : ''}
-            ${i === 3 ? 'inset-12 border-blue-400 bg-blue-900/30' : ''}`}>
-            {i === 3 && <span className="text-xs">{label}</span>}
-          </div>
-        ))}
-        <div className="absolute -right-20 top-1/2 text-xs text-gray-400">
-          → 请求方向
+      <div className="space-y-4">
+        <div className="text-sm text-gray-400">洋葱模型：请求从外到内，响应从内到外</div>
+        <div className="relative w-48 h-48 mx-auto">
+          {["日志", "埋点", "缓存", "请求"].map((label, i) => (
+            <div
+              key={i}
+              className={`absolute rounded-full border-2 flex items-center justify-center
+            ${i === 0 ? "inset-0 border-red-400" : ""}
+            ${i === 1 ? "inset-4 border-yellow-400" : ""}
+            ${i === 2 ? "inset-8 border-green-400" : ""}
+            ${i === 3 ? "inset-12 border-blue-400 bg-blue-900/30" : ""}`}
+            >
+              {i === 3 && <span className="text-xs">{label}</span>}
+            </div>
+          ))}
+          <div className="absolute -right-20 top-1/2 text-xs text-gray-400">→ 请求方向</div>
+          <div className="absolute -left-20 top-1/2 text-xs text-gray-400">← 响应方向</div>
         </div>
-        <div className="absolute -left-20 top-1/2 text-xs text-gray-400">
-          ← 响应方向
-        </div>
+        <p className="text-sm text-gray-400">✅ 每层中间件可以：前置处理 → 调用next → 后置处理</p>
       </div>
-      <p className="text-sm text-gray-400">✅ 每层中间件可以：前置处理 → 调用next → 后置处理</p>
-    </div>
-    )
+    );
   },
   ioc: function IocDemo() {
     return (
-    <div className="space-y-3 text-sm">
-      <div className="text-gray-400">传统方式：组件自己创建依赖</div>
-      <div className="bg-red-900/20 p-3 rounded border border-red-500/30">
-        <code>const service = new UserService(new Http(), new Cache())</code>
+      <div className="space-y-3 text-sm">
+        <div className="text-gray-400">传统方式：组件自己创建依赖</div>
+        <div className="bg-red-900/20 p-3 rounded border border-red-500/30">
+          <code>const service = new UserService(new Http(), new Cache())</code>
+        </div>
+        <div className="text-gray-400">IoC方式：容器注入依赖</div>
+        <div className="bg-green-900/20 p-3 rounded border border-green-500/30">
+          <code>const service = container.resolve(Tokens.UserService)</code>
+        </div>
+        <p className="text-gray-400">✅ 解耦、易测试、易替换</p>
       </div>
-      <div className="text-gray-400">IoC方式：容器注入依赖</div>
-      <div className="bg-green-900/20 p-3 rounded border border-green-500/30">
-        <code>const service = container.resolve(Tokens.UserService)</code>
-      </div>
-      <p className="text-gray-400">✅ 解耦、易测试、易替换</p>
-    </div>
-    )
+    );
   },
   ratelimit: function RateLimitDemo() {
-    const [tokens, setTokens] = useState(5)
+    const [tokens, setTokens] = useState(5);
     return (
       <div className="space-y-3">
         <div className="text-sm text-gray-400">令牌桶：每秒补充令牌，允许突发</div>
         <div className="flex gap-1">
-          {Array(5).fill(0).map((_, i) => (
-            <div key={i} className={`w-8 h-8 rounded ${i < tokens ? 'bg-green-500' : 'bg-gray-700'}`} />
-          ))}
+          {Array(5)
+            .fill(0)
+            .map((_, i) => (
+              <div
+                key={i}
+                className={`w-8 h-8 rounded ${i < tokens ? "bg-green-500" : "bg-gray-700"}`}
+              />
+            ))}
         </div>
-        <button onClick={() => setTokens(t => Math.max(0, t - 1))} className="px-4 py-2 bg-blue-600 rounded">
+        <button
+          onClick={() => setTokens((t) => Math.max(0, t - 1))}
+          className="px-4 py-2 bg-blue-600 rounded"
+        >
           消耗令牌
         </button>
         <button onClick={() => setTokens(5)} className="px-4 py-2 bg-gray-700 rounded ml-2">
@@ -9433,105 +9474,193 @@ const demos: Record<string, () => JSX.Element> = {
         </button>
         <p className="text-sm text-gray-400">✅ 允许突发流量 + 平滑限流</p>
       </div>
-    )
+    );
   },
   plugin: function PluginDemo() {
     return (
-    <div className="space-y-3">
-      <div className="text-sm text-gray-400">插件生命周期</div>
-      <div className="flex gap-2">
-        {['install', 'activate', 'running', 'deactivate', 'uninstall'].map((s, i) => (
-          <div key={s} className="flex flex-col items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs
-              ${i === 2 ? 'bg-green-600' : 'bg-gray-700'}`}>{i + 1}</div>
-            <span className="text-xs mt-1">{s}</span>
-          </div>
-        ))}
+      <div className="space-y-3">
+        <div className="text-sm text-gray-400">插件生命周期</div>
+        <div className="flex gap-2">
+          {["install", "activate", "running", "deactivate", "uninstall"].map((s, i) => (
+            <div key={s} className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-xs
+              ${i === 2 ? "bg-green-600" : "bg-gray-700"}`}
+              >
+                {i + 1}
+              </div>
+              <span className="text-xs mt-1">{s}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-gray-400">✅ 宿主稳定，功能通过插件扩展</p>
       </div>
-      <p className="text-sm text-gray-400">✅ 宿主稳定，功能通过插件扩展</p>
-    </div>
-    )
+    );
+  },
+  "price-engine": function PriceEngineDemo() {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+            规则引擎
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            策略模式
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            优先级调度
+          </span>
+        </div>
+        <div className="bg-gray-800/60 rounded-lg border border-gray-700/60 p-4 space-y-3">
+          <p className="text-sm text-gray-300 font-medium">规则执行链（按 priority 升序）</p>
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            {[
+              {
+                icon: "⚡",
+                name: "FlashSale",
+                p: 5,
+                color: "text-red-400 border-red-500/40 bg-red-500/10",
+              },
+              {
+                icon: "👑",
+                name: "Member",
+                p: 10,
+                color: "text-yellow-400 border-yellow-500/40 bg-yellow-500/10",
+              },
+              {
+                icon: "🎁",
+                name: "FullReduction",
+                p: 20,
+                color: "text-blue-400 border-blue-500/40 bg-blue-500/10",
+              },
+              {
+                icon: "🎫",
+                name: "Coupon",
+                p: 30,
+                color: "text-green-400 border-green-500/40 bg-green-500/10",
+              },
+              {
+                icon: "📍",
+                name: "Region",
+                p: 40,
+                color: "text-purple-400 border-purple-500/40 bg-purple-500/10",
+              },
+            ].map((r, i, arr) => (
+              <div key={r.name} className="flex items-center gap-1.5">
+                <span className={`px-2 py-1 rounded border font-mono ${r.color}`}>
+                  {r.icon} P{r.p} {r.name}
+                </span>
+                {i < arr.length - 1 && <span className="text-gray-600">→</span>}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">
+            每条规则自治：<code className="bg-gray-700 px-1 rounded">isApplicable()</code>{" "}
+            判断是否触发，
+            <code className="bg-gray-700 px-1 rounded">apply()</code> 返回折扣明细。 新增规则只需{" "}
+            <code className="bg-gray-700 px-1 rounded">engine.register(new XxxRule())</code>
+            ，无需改引擎代码。
+          </p>
+        </div>
+        <a
+          href="/demos/price-engine"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-gradient-to-r from-green-600/80 to-emerald-600/80 hover:from-green-500/80 hover:to-emerald-500/80 text-white font-medium text-sm transition-all border border-green-500/30 hover:border-green-400/50 hover:shadow-lg hover:shadow-green-500/10"
+        >
+          <span>💰</span>
+          <span>进入完整 Demo — 实时调整优惠规则</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+    );
   },
   seckill: function SeckillDemo() {
-    const [count, setCount] = useState(10)
-    const [status, setStatus] = useState<'countdown' | 'ready' | 'processing'>('countdown')
-    
+    const [count, setCount] = useState(10);
+    const [status, setStatus] = useState<"countdown" | "ready" | "processing">("countdown");
+
     useEffect(() => {
       if (count > 0) {
-        const t = setTimeout(() => setCount(c => c - 1), 1000)
-        return () => clearTimeout(t)
+        const t = setTimeout(() => setCount((c) => c - 1), 1000);
+        return () => clearTimeout(t);
       } else {
-        setStatus('ready')
+        setStatus("ready");
       }
-    }, [count])
-    
+    }, [count]);
+
     return (
       <div className="space-y-3 text-center">
-        {status === 'countdown' && (
+        {status === "countdown" && (
           <div className="text-3xl font-bold text-yellow-400">{count}s</div>
         )}
-        {status === 'ready' && (
-          <button onClick={() => setStatus('processing')} className="px-8 py-4 bg-red-600 rounded-lg text-xl animate-pulse">
+        {status === "ready" && (
+          <button
+            onClick={() => setStatus("processing")}
+            className="px-8 py-4 bg-red-600 rounded-lg text-xl animate-pulse"
+          >
             立即抢购
           </button>
         )}
-        {status === 'processing' && (
-          <div className="text-blue-400">排队中，前方还有 128 人...</div>
-        )}
+        {status === "processing" && <div className="text-blue-400">排队中，前方还有 128 人...</div>}
         <p className="text-sm text-gray-400">✅ 服务器时间同步 + 排队机制</p>
       </div>
-    )
+    );
   },
   realtime: function RealtimeDemo() {
     const [stocks] = useState([
-      { symbol: 'AAPL', price: 178.52, change: 2.3 },
-      { symbol: 'GOOGL', price: 141.80, change: -0.8 },
-      { symbol: 'TSLA', price: 248.50, change: 5.2 },
-    ])
-    const [connected] = useState(true)
-    
+      { symbol: "AAPL", price: 178.52, change: 2.3 },
+      { symbol: "GOOGL", price: 141.8, change: -0.8 },
+      { symbol: "TSLA", price: 248.5, change: 5.2 },
+    ]);
+    const [connected] = useState(true);
+
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-xs">{connected ? 'WebSocket 已连接' : '断线重连中...'}</span>
+          <div className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`} />
+          <span className="text-xs">{connected ? "WebSocket 已连接" : "断线重连中..."}</span>
         </div>
         <div className="space-y-1">
-          {stocks.map(s => (
+          {stocks.map((s) => (
             <div key={s.symbol} className="flex justify-between text-sm">
               <span>{s.symbol}</span>
-              <span className={s.change >= 0 ? 'text-green-400' : 'text-red-400'}>
-                ${s.price} ({s.change >= 0 ? '+' : ''}{s.change}%)
+              <span className={s.change >= 0 ? "text-green-400" : "text-red-400"}>
+                ${s.price} ({s.change >= 0 ? "+" : ""}
+                {s.change}%)
               </span>
             </div>
           ))}
         </div>
         <p className="text-sm text-gray-400">✅ 心跳检测 + 断线重连 + 批量更新</p>
       </div>
-    )
+    );
   },
-  'sku-selector': function SkuSelectorDemo() {
-    const [selected, setSelected] = useState<Record<string, string>>({})
+  "sku-selector": function SkuSelectorDemo() {
+    const [selected, setSelected] = useState<Record<string, string>>({});
     const specs = [
-      { id: 'color', name: '颜色', values: ['红', '蓝', '黑'] },
-      { id: 'size', name: '尺寸', values: ['S', 'M', 'L'] },
-    ]
-    
+      { id: "color", name: "颜色", values: ["红", "蓝", "黑"] },
+      { id: "size", name: "尺寸", values: ["S", "M", "L"] },
+    ];
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">SKU选择器：动态计算可选路径</div>
-        {specs.map(spec => (
+        {specs.map((spec) => (
           <div key={spec.id} className="space-y-2">
             <div className="text-sm font-medium">{spec.name}</div>
             <div className="flex gap-2">
-              {spec.values.map(v => (
+              {spec.values.map((v) => (
                 <button
                   key={v}
-                  onClick={() => setSelected(s => ({ ...s, [spec.id]: s[spec.id] === v ? '' : v }))}
+                  onClick={() =>
+                    setSelected((s) => ({ ...s, [spec.id]: s[spec.id] === v ? "" : v }))
+                  }
                   className={`px-3 py-1 rounded border text-sm
-                    ${selected[spec.id] === v 
-                      ? 'border-blue-500 bg-blue-900/30' 
-                      : 'border-gray-600 hover:border-gray-400'}`}
+                    ${
+                      selected[spec.id] === v
+                        ? "border-blue-500 bg-blue-900/30"
+                        : "border-gray-600 hover:border-gray-400"
+                    }`}
                 >
                   {v}
                 </button>
@@ -9540,32 +9669,38 @@ const demos: Record<string, () => JSX.Element> = {
           </div>
         ))}
         <div className="text-sm text-gray-400">
-          已选: {Object.values(selected).filter(Boolean).join(' / ') || '未选择'}
+          已选: {Object.values(selected).filter(Boolean).join(" / ") || "未选择"}
         </div>
         <p className="text-sm text-gray-400">✅ 图论路径搜索 + 状态矩阵</p>
       </div>
-    )
+    );
   },
-  'coupon-stack': function CouponStackDemo() {
-    const [coupons, setCoupons] = useState<string[]>([])
+  "coupon-stack": function CouponStackDemo() {
+    const [coupons, setCoupons] = useState<string[]>([]);
     const couponList = [
-      { id: 'full', name: '满100减20', type: '满减' },
-      { id: 'discount', name: '8折券', type: '折扣' },
-      { id: 'shipping', name: '包邮券', type: '运费' },
-    ]
-    
+      { id: "full", name: "满100减20", type: "满减" },
+      { id: "discount", name: "8折券", type: "折扣" },
+      { id: "shipping", name: "包邮券", type: "运费" },
+    ];
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">选择优惠券（自动判断互斥/叠加）</div>
         <div className="space-y-2">
-          {couponList.map(c => (
+          {couponList.map((c) => (
             <button
               key={c.id}
-              onClick={() => setCoupons(cs => cs.includes(c.id) ? cs.filter(x => x !== c.id) : [...cs, c.id])}
+              onClick={() =>
+                setCoupons((cs) =>
+                  cs.includes(c.id) ? cs.filter((x) => x !== c.id) : [...cs, c.id],
+                )
+              }
               className={`w-full p-2 rounded border text-left text-sm
-                ${coupons.includes(c.id) 
-                  ? 'border-green-500 bg-green-900/30' 
-                  : 'border-gray-600 hover:border-gray-400'}`}
+                ${
+                  coupons.includes(c.id)
+                    ? "border-green-500 bg-green-900/30"
+                    : "border-gray-600 hover:border-gray-400"
+                }`}
             >
               <span className="font-medium">{c.name}</span>
               <span className="text-gray-400 ml-2">({c.type})</span>
@@ -9577,12 +9712,12 @@ const demos: Record<string, () => JSX.Element> = {
         </div>
         <p className="text-sm text-gray-400">✅ 规则引擎 + 策略模式</p>
       </div>
-    )
+    );
   },
-  'inventory-lock': function InventoryLockDemo() {
-    const [stock, setStock] = useState(10)
-    const [locked, setLocked] = useState(0)
-    
+  "inventory-lock": function InventoryLockDemo() {
+    const [stock, setStock] = useState(10);
+    const [locked, setLocked] = useState(0);
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">库存预占演示</div>
@@ -9601,27 +9736,38 @@ const demos: Record<string, () => JSX.Element> = {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setLocked(l => Math.min(l + 1, stock))} 
-            className="px-4 py-2 bg-blue-600 rounded text-sm">
+          <button
+            onClick={() => setLocked((l) => Math.min(l + 1, stock))}
+            className="px-4 py-2 bg-blue-600 rounded text-sm"
+          >
             锁定1件
           </button>
-          <button onClick={() => { setStock(s => s - locked); setLocked(0) }}
-            className="px-4 py-2 bg-green-600 rounded text-sm" disabled={locked === 0}>
+          <button
+            onClick={() => {
+              setStock((s) => s - locked);
+              setLocked(0);
+            }}
+            className="px-4 py-2 bg-green-600 rounded text-sm"
+            disabled={locked === 0}
+          >
             确认购买
           </button>
-          <button onClick={() => setLocked(0)}
-            className="px-4 py-2 bg-gray-600 rounded text-sm" disabled={locked === 0}>
+          <button
+            onClick={() => setLocked(0)}
+            className="px-4 py-2 bg-gray-600 rounded text-sm"
+            disabled={locked === 0}
+          >
             释放库存
           </button>
         </div>
         <p className="text-sm text-gray-400">✅ 乐观锁 + 超时自动释放</p>
       </div>
-    )
+    );
   },
-  'account-freeze': function AccountFreezeDemo() {
-    const [balance, setBalance] = useState(1000)
-    const [frozen, setFrozen] = useState(0)
-    
+  "account-freeze": function AccountFreezeDemo() {
+    const [balance, setBalance] = useState(1000);
+    const [frozen, setFrozen] = useState(0);
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">账户余额操作演示</div>
@@ -9640,37 +9786,55 @@ const demos: Record<string, () => JSX.Element> = {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { setBalance(b => b - 100); setFrozen(f => f + 100) }}
-            className="px-3 py-1 bg-blue-600 rounded text-sm" disabled={balance < 100}>
+          <button
+            onClick={() => {
+              setBalance((b) => b - 100);
+              setFrozen((f) => f + 100);
+            }}
+            className="px-3 py-1 bg-blue-600 rounded text-sm"
+            disabled={balance < 100}
+          >
             冻结¥100
           </button>
-          <button onClick={() => { setFrozen(0) }}
-            className="px-3 py-1 bg-gray-600 rounded text-sm" disabled={frozen === 0}>
+          <button
+            onClick={() => {
+              setFrozen(0);
+            }}
+            className="px-3 py-1 bg-gray-600 rounded text-sm"
+            disabled={frozen === 0}
+          >
             解冻全部
           </button>
-          <button onClick={() => { setFrozen(0) }}
-            className="px-3 py-1 bg-green-600 rounded text-sm" disabled={frozen === 0}>
+          <button
+            onClick={() => {
+              setFrozen(0);
+            }}
+            className="px-3 py-1 bg-green-600 rounded text-sm"
+            disabled={frozen === 0}
+          >
             扣款确认
           </button>
         </div>
         <p className="text-sm text-gray-400">✅ 状态机 + 幂等性保证</p>
       </div>
-    )
+    );
   },
-  'distributed-id': function DistributedIdDemo() {
-    const [ids, setIds] = useState<string[]>([])
-    
+  "distributed-id": function DistributedIdDemo() {
+    const [ids, setIds] = useState<string[]>([]);
+
     const generateId = () => {
-      const timestamp = Date.now()
-      const random = Math.random().toString(36).slice(2, 6)
-      return `ORD${timestamp}${random}`.toUpperCase()
-    }
-    
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).slice(2, 6);
+      return `ORD${timestamp}${random}`.toUpperCase();
+    };
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">雪花算法ID生成演示</div>
-        <button onClick={() => setIds(ids => [generateId(), ...ids.slice(0, 5)])}
-          className="px-4 py-2 bg-blue-600 rounded">
+        <button
+          onClick={() => setIds((ids) => [generateId(), ...ids.slice(0, 5)])}
+          className="px-4 py-2 bg-blue-600 rounded"
+        >
           生成ID
         </button>
         <div className="space-y-1">
@@ -9680,31 +9844,29 @@ const demos: Record<string, () => JSX.Element> = {
             </div>
           ))}
         </div>
-        <div className="text-xs text-gray-400">
-          时间戳(41bit) + 机器ID(10bit) + 序列号(12bit)
-        </div>
+        <div className="text-xs text-gray-400">时间戳(41bit) + 机器ID(10bit) + 序列号(12bit)</div>
         <p className="text-sm text-gray-400">✅ 全局唯一 + 时间有序</p>
       </div>
-    )
+    );
   },
-  'quote-merge': function QuoteMergeDemo() {
-    const [updates, setUpdates] = useState(0)
-    const [renders, setRenders] = useState(0)
-    
+  "quote-merge": function QuoteMergeDemo() {
+    const [updates, setUpdates] = useState(0);
+    const [renders, setRenders] = useState(0);
+
     useEffect(() => {
       const timer = setInterval(() => {
-        setUpdates(u => u + Math.floor(Math.random() * 10) + 1)
-      }, 100)
-      return () => clearInterval(timer)
-    }, [])
-    
+        setUpdates((u) => u + Math.floor(Math.random() * 10) + 1);
+      }, 100);
+      return () => clearInterval(timer);
+    }, []);
+
     useEffect(() => {
       const timer = setInterval(() => {
-        setRenders(r => r + 1)
-      }, 50)
-      return () => clearInterval(timer)
-    }, [])
-    
+        setRenders((r) => r + 1);
+      }, 50);
+      return () => clearInterval(timer);
+    }, []);
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">高频数据合并演示</div>
@@ -9718,31 +9880,32 @@ const demos: Record<string, () => JSX.Element> = {
             <div className="text-xs text-gray-400">渲染次数/秒</div>
           </div>
         </div>
-        <div className="text-sm text-gray-400">
-          推送:渲染比例 ≈ 2:1（合并后减少50%渲染）
-        </div>
+        <div className="text-sm text-gray-400">推送:渲染比例 ≈ 2:1（合并后减少50%渲染）</div>
         <p className="text-sm text-gray-400">✅ 数据合并 + 批量更新</p>
       </div>
-    )
+    );
   },
-  'data-permission': function DataPermissionDemo() {
-    const [role, setRole] = useState<'admin' | 'manager' | 'sales'>('sales')
-    
+  "data-permission": function DataPermissionDemo() {
+    const [role, setRole] = useState<"admin" | "manager" | "sales">("sales");
+
     const permissions = {
-      admin: { scope: '全部数据', fields: '全部字段', masked: '无' },
-      manager: { scope: '部门数据', fields: '全部字段', masked: '手机号' },
-      sales: { scope: '个人数据', fields: '部分字段', masked: '手机号/邮箱/身份证' },
-    }
-    
+      admin: { scope: "全部数据", fields: "全部字段", masked: "无" },
+      manager: { scope: "部门数据", fields: "全部字段", masked: "手机号" },
+      sales: { scope: "个人数据", fields: "部分字段", masked: "手机号/邮箱/身份证" },
+    };
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">数据权限过滤演示</div>
         <div className="flex gap-2">
-          {(['admin', 'manager', 'sales'] as const).map(r => (
-            <button key={r} onClick={() => setRole(r)}
+          {(["admin", "manager", "sales"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRole(r)}
               className={`px-4 py-2 rounded text-sm
-                ${role === r ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
-              {r === 'admin' ? '管理员' : r === 'manager' ? '经理' : '销售'}
+                ${role === r ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"}`}
+            >
+              {r === "admin" ? "管理员" : r === "manager" ? "经理" : "销售"}
             </button>
           ))}
         </div>
@@ -9762,58 +9925,88 @@ const demos: Record<string, () => JSX.Element> = {
         </div>
         <p className="text-sm text-gray-400">✅ 策略模式 + AOP切面</p>
       </div>
-    )
+    );
   },
-  'audit-trail': function AuditTrailDemo() {
-    const [logs, setLogs] = useState<{action: string; time: string; user: string}[]>([])
-    
+  "audit-trail": function AuditTrailDemo() {
+    const [logs, setLogs] = useState<{ action: string; time: string; user: string }[]>([]);
+
     const addLog = (action: string) => {
-      setLogs(logs => [{
-        action,
-        time: new Date().toLocaleTimeString(),
-        user: '当前用户'
-      }, ...logs].slice(0, 5))
-    }
-    
+      setLogs((logs) =>
+        [
+          {
+            action,
+            time: new Date().toLocaleTimeString(),
+            user: "当前用户",
+          },
+          ...logs,
+        ].slice(0, 5),
+      );
+    };
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">操作审计追踪演示</div>
         <div className="flex gap-2">
-          <button onClick={() => addLog('创建订单')} className="px-3 py-1 bg-blue-600 rounded text-sm">创建</button>
-          <button onClick={() => addLog('修改价格')} className="px-3 py-1 bg-yellow-600 rounded text-sm">修改</button>
-          <button onClick={() => addLog('删除订单')} className="px-3 py-1 bg-red-600 rounded text-sm">删除</button>
-          <button onClick={() => addLog('导出数据')} className="px-3 py-1 bg-gray-600 rounded text-sm">导出</button>
+          <button
+            onClick={() => addLog("创建订单")}
+            className="px-3 py-1 bg-blue-600 rounded text-sm"
+          >
+            创建
+          </button>
+          <button
+            onClick={() => addLog("修改价格")}
+            className="px-3 py-1 bg-yellow-600 rounded text-sm"
+          >
+            修改
+          </button>
+          <button
+            onClick={() => addLog("删除订单")}
+            className="px-3 py-1 bg-red-600 rounded text-sm"
+          >
+            删除
+          </button>
+          <button
+            onClick={() => addLog("导出数据")}
+            className="px-3 py-1 bg-gray-600 rounded text-sm"
+          >
+            导出
+          </button>
         </div>
         <div className="space-y-2">
           {logs.map((log, i) => (
             <div key={i} className="flex justify-between text-sm p-2 bg-gray-800 rounded">
               <span>{log.action}</span>
-              <span className="text-gray-400">{log.time} - {log.user}</span>
+              <span className="text-gray-400">
+                {log.time} - {log.user}
+              </span>
             </div>
           ))}
           {logs.length === 0 && <div className="text-sm text-gray-500">暂无操作记录</div>}
         </div>
         <p className="text-sm text-gray-400">✅ 装饰器模式 + 链路追踪</p>
       </div>
-    )
+    );
   },
-  'multi-tenant': function MultiTenantDemo() {
-    const [tenant, setTenant] = useState<'A' | 'B' | 'C'>('A')
-    
+  "multi-tenant": function MultiTenantDemo() {
+    const [tenant, setTenant] = useState<"A" | "B" | "C">("A");
+
     const tenants = {
-      A: { name: '企业A', color: '#3b82f6', users: 100, storage: '50GB' },
-      B: { name: '企业B', color: '#10b981', users: 50, storage: '30GB' },
-      C: { name: '企业C', color: '#f59e0b', users: 20, storage: '10GB' },
-    }
-    
+      A: { name: "企业A", color: "#3b82f6", users: 100, storage: "50GB" },
+      B: { name: "企业B", color: "#10b981", users: 50, storage: "30GB" },
+      C: { name: "企业C", color: "#f59e0b", users: 20, storage: "10GB" },
+    };
+
     return (
       <div className="space-y-4">
         <div className="text-sm text-gray-400">多租户隔离演示</div>
         <div className="flex gap-2">
-          {(['A', 'B', 'C'] as const).map(t => (
-            <button key={t} onClick={() => setTenant(t)}
-              style={{ backgroundColor: tenant === t ? tenants[t].color : '#374151' }}
-              className="px-4 py-2 rounded text-sm text-white">
+          {(["A", "B", "C"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTenant(t)}
+              style={{ backgroundColor: tenant === t ? tenants[t].color : "#374151" }}
+              className="px-4 py-2 rounded text-sm text-white"
+            >
               租户{t}
             </button>
           ))}
@@ -9828,28 +10021,28 @@ const demos: Record<string, () => JSX.Element> = {
         </div>
         <p className="text-sm text-gray-400">✅ 上下文传播 + 数据路由</p>
       </div>
-    )
+    );
   },
-  default: () => <div className="text-gray-400 text-sm">详细代码请查看「优雅设计」标签</div>
-}
+  default: () => <div className="text-gray-400 text-sm">详细代码请查看「优雅设计」标签</div>,
+};
 
 // ==================== 主组件 ====================
 export default function Home() {
-  const [activeScenario, setActiveScenario] = useState<ScenarioType>('onion')
-  const [activeTab, setActiveTab] = useState<TabType>('problem')
+  const [activeScenario, setActiveScenario] = useState<ScenarioType>("onion");
+  const [activeTab, setActiveTab] = useState<TabType>("problem");
 
-  const scenario = scenarios.find(s => s.id === activeScenario)!
-  
+  const scenario = scenarios.find((s) => s.id === activeScenario)!;
+
   // 按类别分组
   const categories = useMemo(() => {
-    const groups: Record<string, Scenario[]> = {}
-    scenarios.forEach(s => {
-      const cat = s.category || '其他'
-      if (!groups[cat]) groups[cat] = []
-      groups[cat].push(s)
-    })
-    return groups
-  }, [])
+    const groups: Record<string, Scenario[]> = {};
+    scenarios.forEach((s) => {
+      const cat = s.category || "其他";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(s);
+    });
+    return groups;
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex">
@@ -9865,29 +10058,43 @@ export default function Home() {
         <nav className="flex-1 overflow-auto p-2 space-y-1">
           {Object.entries(categories).map(([cat, items]) => (
             <div key={cat}>
-              <div className={`px-2 py-1 text-xs font-medium ${
-                cat === '架构模式' ? 'text-purple-400' :
-                cat === '电商领域' ? 'text-blue-400' :
-                cat === '金融领域' ? 'text-green-400' :
-                cat === '企业级场景' ? 'text-orange-400' :
-                'text-gray-400'
-              }`}>
-                {cat === '架构模式' && '🏗️ '}
-                {cat === '电商领域' && '🛒 '}
-                {cat === '金融领域' && '💰 '}
-                {cat === '企业级场景' && '🏢 '}
+              <div
+                className={`px-2 py-1 text-xs font-medium ${
+                  cat === "架构模式"
+                    ? "text-purple-400"
+                    : cat === "电商领域"
+                      ? "text-blue-400"
+                      : cat === "金融领域"
+                        ? "text-green-400"
+                        : cat === "企业级场景"
+                          ? "text-orange-400"
+                          : "text-gray-400"
+                }`}
+              >
+                {cat === "架构模式" && "🏗️ "}
+                {cat === "电商领域" && "🛒 "}
+                {cat === "金融领域" && "💰 "}
+                {cat === "企业级场景" && "🏢 "}
                 {cat}
               </div>
-              {items.map(s => (
-                <button key={s.id} onClick={() => { setActiveScenario(s.id); setActiveTab('problem') }}
+              {items.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setActiveScenario(s.id);
+                    setActiveTab("problem");
+                  }}
                   className={`w-full text-left p-2 rounded text-sm transition-all ${
-                    activeScenario === s.id 
-                      ? 'bg-blue-600/20 border border-blue-500/50 text-white' 
-                      : 'hover:bg-gray-800 text-gray-400'
-                  }`}>
+                    activeScenario === s.id
+                      ? "bg-blue-600/20 border border-blue-500/50 text-white"
+                      : "hover:bg-gray-800 text-gray-400"
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <span>{s.title}</span>
-                    <span className="text-xs opacity-50">{'💩'.repeat(Math.min(s.difficulty, 5))}</span>
+                    <span className="text-xs opacity-50">
+                      {"💩".repeat(Math.min(s.difficulty, 5))}
+                    </span>
                   </div>
                   <div className="text-xs text-gray-500">{s.subtitle}</div>
                 </button>
@@ -9902,15 +10109,20 @@ export default function Home() {
         {/* Tab 导航 */}
         <div className="border-b border-gray-800 flex">
           {[
-            { id: 'problem' as const, label: '📋 问题分析' },
-            { id: 'bad' as const, label: '💩 烂代码' },
-            { id: 'good' as const, label: '✨ 优雅设计' },
-            { id: 'demo' as const, label: '🎮 Demo' },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            { id: "problem" as const, label: "📋 问题分析" },
+            { id: "bad" as const, label: "💩 烂代码" },
+            { id: "good" as const, label: "✨ 优雅设计" },
+            { id: "demo" as const, label: "🎮 Demo" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-3 text-sm transition-all border-b-2 ${
-                activeTab === tab.id ? 'border-blue-500 bg-gray-800/50' : 'border-transparent hover:bg-gray-800/30'
-              }`}>
+                activeTab === tab.id
+                  ? "border-blue-500 bg-gray-800/50"
+                  : "border-transparent hover:bg-gray-800/30"
+              }`}
+            >
               {tab.label}
             </button>
           ))}
@@ -9918,10 +10130,10 @@ export default function Home() {
 
         {/* 内容区 */}
         <div className="flex-1 overflow-auto p-6">
-          {activeTab === 'problem' && (
+          {activeTab === "problem" && (
             <div className="space-y-4">
               <div className="inline-block px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm">
-                易屎山指数：{'💩'.repeat(Math.min(scenario.difficulty, 5))}
+                易屎山指数：{"💩".repeat(Math.min(scenario.difficulty, 5))}
               </div>
               <pre className="whitespace-pre-wrap text-gray-300 leading-relaxed bg-gray-800 p-4 rounded-lg text-sm overflow-auto">
                 {scenario.problem}
@@ -9933,10 +10145,10 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === 'bad' && <CodeBlock code={scenario.badCode} type="bad" />}
-          {activeTab === 'good' && <CodeBlock code={scenario.goodCode} type="good" />}
-          
-          {activeTab === 'demo' && (
+          {activeTab === "bad" && <CodeBlock code={scenario.badCode} type="bad" />}
+          {activeTab === "good" && <CodeBlock code={scenario.goodCode} type="good" />}
+
+          {activeTab === "demo" && (
             <div className="p-6 bg-gray-800/50 rounded-lg border border-gray-700">
               {(demos[activeScenario] || demos.default)()}
             </div>
@@ -9944,5 +10156,5 @@ export default function Home() {
         </div>
       </main>
     </div>
-  )
+  );
 }

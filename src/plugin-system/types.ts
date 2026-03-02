@@ -16,14 +16,17 @@ export interface PluginContext {
    */
   state: Map<string, any>;
 
+  /** 插件配置，由宿主或用户传入 */
+  config: Record<string, any>;
+
   /** 监听事件总线上的事件 */
-  on(event: string, handler: Function): void;
+  on<T = unknown>(event: string, handler: (data: T) => void): void;
 
   /** 取消监听事件总线上的事件 */
-  off(event: string, handler: Function): void;
+  off<T = unknown>(event: string, handler: (data: T) => void): void;
 
   /** 向事件总线发送事件，通知其他插件或宿主 */
-  emit(event: string, data?: any): void;
+  emit<T = unknown>(event: string, data?: T): void;
 
   /** 通过 id 获取其他已注册插件实例（只读） */
   getPlugin(id: string): Plugin | null;
@@ -40,9 +43,6 @@ export interface PluginContext {
    * 扩展点必须已由宿主通过 defineExtensionPoint 定义
    */
   registerExtension(point: string, handler: ExtensionHandler): void;
-
-  /** 插件配置，由宿主或用户传入 */
-  config: Record<string, any>;
 }
 
 // ==================== 插件接口 ====================
