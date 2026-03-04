@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
 import { PluginHost } from "@/plugin-system/PluginHost";
 import { autoSavePlugin } from "@/plugin-system/plugins/autoSave";
 import { wordCountPlugin } from "@/plugin-system/plugins/wordCount";
@@ -138,12 +140,24 @@ function MarkdownPanel({ html }: { html: string }) {
 }
 
 // ==================== GlobalPopup ====================
-// 唯一的弹窗容器，负责定位 + 点击外部关闭。
-// 内容（children）由调用方决定，GlobalPopup 本身不关心里面渲染什么。
+// 对标 Tiptap BubbleMenu 的完整 Portal 实现，零第三方依赖。
 //
-// 这就是业界方案的核心：
-//   宿主只维护一套定位 + 关闭逻辑
-//   每个插件只需关心"我的弹窗内容长什么样"
+// 三个核心升级（vs 旧版 fixed + getBoundingClientRect）：
+//
+// 1. React Portal（createPortal → document.body）
+//    旧版：弹窗 div 在 React 组件树里，受父级 overflow/transform/z-index 影响
+//    新版：直接挂到 body，与任何父级完全隔离，层级永远干净
+//
+// 2. 两阶段定位（invisible render → useLayoutEffect 读尺寸 → 显示）
+//    旧版：渲染前用 getBoundingClientRect 算坐标，但此时弹窗自身尺寸未知，
+//          无法判断是否超出视口
+//    新版：先以 opacity:0 渲染弹窗，useLayoutEffect 读取弹窗真实宽高，
+//          再算坐标，浏览器绘制前完成，用户看不到闪烁
+//
+// 3. 视口边界翻转
+//    右边界：left + popupWidth > viewport → 改为右对齐（贴右边）
+//    下边界：bottom + popupHeight > viewport → 弹到按钮上方
+//    这就是 Floating UI / Tippy 的核心逻辑，用 ~20 行原生代码实现
 function GlobalPopup({
   anchorEl,
   onClose,
@@ -153,169 +167,82 @@ function GlobalPopup({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // SSR guard：服务端没有 window/document，createPortal 只能在客户端调用。
+  // 用 useState 惰性初始化（传入函数）来判断当前环境：
+  //   - 服务端：typeof window === 'undefined' → false，不渲染 portal
+  //   - 客户端：typeof window === 'object'    → true，正常渲染 portal
+  // 优势：不需要 useEffect + setState，零额外渲染，零 linter 警告。
+  // 惰性初始化函数只在组件首次挂载时执行一次，之后 useState 忽略它。
+  const [mounted] = useState(() => typeof window !== "undefined");
+
+  // 两阶段定位：
+  //   阶段一：opacity:0 先渲染，此时 popupRef.current 已有真实宽高
+  //   阶段二：useLayoutEffect 读取尺寸 + anchorEl 位置，计算最终坐标，切换为 opacity:1
+  // useLayoutEffect 在 DOM 更新后、浏览器绘制前同步执行，用户看不到任何闪烁
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!anchorEl || !popupRef.current) return;
+
+    const anchor = anchorEl.getBoundingClientRect();
+    const popup = popupRef.current.getBoundingClientRect();
+    const GAP = 6; // 弹窗与按钮之间的间距（px）
+
+    // ── 垂直方向：优先放在下方，放不下就翻到上方 ──
+    const spaceBelow = window.innerHeight - anchor.bottom - GAP;
+    const placeBelow = spaceBelow >= popup.height;
+    const top = placeBelow
+      ? anchor.bottom + GAP // 按钮下方
+      : anchor.top - popup.height - GAP; // 按钮上方（翻转）
+
+    // ── 水平方向：优先左对齐，超出右边界就右对齐 ──
+    const MARGIN = 8; // 距离视口右边缘的最小留白
+    const left = Math.min(
+      anchor.left, // 左对齐
+      window.innerWidth - popup.width - MARGIN, // 不超出右边界
+    );
+
+    setPos({ top, left });
+  }, [anchorEl]); // anchorEl 变化说明打开了新弹窗，重新计算坐标
 
   // 点击弹窗外部关闭
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
-      const clickedOutsidePopup = ref.current && !ref.current.contains(target);
-      const clickedOutsideAnchor = anchorEl && !anchorEl.contains(target);
-      if (clickedOutsidePopup && clickedOutsideAnchor) onClose();
+      const outside = popupRef.current && !popupRef.current.contains(target);
+      const notAnchor = anchorEl && !anchorEl.contains(target);
+      if (outside && notAnchor) onClose();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [anchorEl, onClose]);
 
-  // 根据 anchorEl 计算弹窗位置，始终贴在按钮正下方
-  const rect = anchorEl?.getBoundingClientRect();
-  const style: React.CSSProperties = rect
-    ? { position: "fixed", top: rect.bottom + 6, left: rect.left }
-    : { position: "fixed", top: 0, left: 0 };
+  if (!mounted) return null;
 
-  return (
+  // createPortal 第二个参数是挂载目标：document.body
+  // 弹窗 DOM 会直接成为 body 的子节点，完全脱离当前组件树的 DOM 层级，
+  // 但 React 事件冒泡仍然沿组件树（不是 DOM 树）传播，行为与普通子组件一致
+  return createPortal(
     <div
-      ref={ref}
-      style={style}
-      className="z-50 bg-zinc-800 border border-zinc-600 rounded-lg shadow-2xl"
+      ref={popupRef}
+      style={{
+        position: "fixed",
+        top: pos?.top ?? 0,
+        left: pos?.left ?? 0,
+        // 两阶段：pos 未就绪时不可见（避免坐标(0,0)的闪烁），就绪后立即显示
+        opacity: pos ? 1 : 0,
+        // 未就绪时不参与鼠标事件，避免影响 mousedown 外部关闭逻辑
+        pointerEvents: pos ? "auto" : "none",
+        // 硬编码高层级，body 直接子节点一般不会有层叠上下文竞争问题
+        zIndex: 9999,
+      }}
+      className="bg-zinc-800 border border-zinc-600 rounded-lg shadow-2xl"
     >
       {children}
-    </div>
-  );
-}
-
-// ==================== ImageForm（纯内容，不管定位）====================
-// 只负责渲染图片输入表单，onConfirm / onClose 由宿主传入
-function ImageForm({
-  onConfirm,
-  onClose,
-}: {
-  onConfirm: (url: string) => void;
-  onClose: () => void;
-}) {
-  const [url, setUrl] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  return (
-    <div className="p-4 w-80">
-      <div className="text-xs text-zinc-400 mb-2 font-bold">🖼 插入图片</div>
-      <input
-        ref={inputRef}
-        type="text"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && url.trim()) onConfirm(url);
-          if (e.key === "Escape") onClose();
-        }}
-        placeholder="输入图片 URL，如 https://..."
-        className="w-full bg-zinc-900 border border-zinc-600 rounded px-3 py-1.5 text-sm text-zinc-200 outline-none focus:border-blue-500 mb-3"
-      />
-      <div className="flex gap-2 justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-3 py-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-        >
-          取消
-        </button>
-        <button
-          type="button"
-          onClick={() => onConfirm(url)}
-          disabled={!url.trim()}
-          className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-40 transition-colors"
-        >
-          插入
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ==================== EmojiGrid（纯内容，不管定位）====================
-// 只负责渲染表情网格，onSelect / onClose 由宿主传入
-const EMOJI_LIST = [
-  "😀",
-  "😂",
-  "😍",
-  "🤔",
-  "😎",
-  "🥳",
-  "😭",
-  "🤩",
-  "👍",
-  "👎",
-  "👏",
-  "🙏",
-  "💪",
-  "🤝",
-  "✌️",
-  "🤞",
-  "❤️",
-  "💔",
-  "💯",
-  "🔥",
-  "⭐",
-  "✨",
-  "🎉",
-  "🎊",
-  "🐶",
-  "🐱",
-  "🐭",
-  "🐻",
-  "🦊",
-  "🐼",
-  "🐨",
-  "🦁",
-  "🍎",
-  "🍊",
-  "🍋",
-  "🍇",
-  "🍓",
-  "🍕",
-  "🍔",
-  "🍜",
-  "⚽",
-  "🏀",
-  "🎮",
-  "🎵",
-  "🎸",
-  "📷",
-  "💻",
-  "📱",
-];
-
-function EmojiGrid({
-  onSelect,
-  onClose,
-}: {
-  onSelect: (emoji: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="p-3 w-72">
-      <div className="text-xs text-zinc-400 mb-2 font-bold">😊 选择表情</div>
-      <div className="grid grid-cols-8 gap-1">
-        {EMOJI_LIST.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            onClick={() => {
-              onSelect(emoji);
-              onClose();
-            }}
-            className="text-xl hover:bg-zinc-700 rounded p-0.5 transition-colors leading-none"
-            title={emoji}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -323,11 +250,16 @@ function EmojiGrid({
 export default function PluginDemoPage() {
   const hostRef = useRef<PluginHost | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // popup state：type 决定渲染哪个内容组件，anchorEl 决定弹窗位置
-  // 这是 GlobalPopup 方案的核心：宿主只存这两个字段，不需要感知每个插件的弹窗细节
+  // popup state：插件传来的弹窗描述
+  // anchorEl  → 决定弹窗定位在哪个按钮旁
+  // renderContent → 插件自己提供的渲染函数，宿主直接调用，完全不感知里面是什么
+  //
+  // 与旧方案的本质区别：
+  //   旧：{ type: 'emoji' | 'image-upload' }  → 宿主必须认识每种类型
+  //   新：{ renderContent: (close) => ReactNode } → 宿主只负责调用，零感知
   const [popup, setPopup] = useState<{
-    type: "image-upload" | "emoji";
     anchorEl: HTMLElement;
+    renderContent: (close: () => void) => ReactNode;
   } | null>(null);
 
   const [content, setContent] = useState(DEFAULT_CONTENT);
@@ -340,6 +272,11 @@ export default function PluginDemoPage() {
   const [logs, setLogs] = useState<{ id: number; text: string }[]>([]);
 
   const logIdRef = useRef(0);
+  // 用 ref 存 insertAtCursor 的最新引用，避免把它列入 useEffect deps。
+  // 插件持有的是一个稳定的包装函数，每次调用时通过 ref.current 拿到最新版本，
+  // 即使 insertAtCursor 因 refreshExtensions 重建，插件侧也无感知，
+  // 同时 useEffect（初始化插件系统）不需要把它列为依赖，不会重复初始化。
+  const insertAtCursorRef = useRef<(text: string) => void>(() => {});
 
   const addLog = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString();
@@ -347,39 +284,44 @@ export default function PluginDemoPage() {
     setLogs((prev) => [{ id, text: `[${time}] ${msg}` }, ...prev].slice(0, 30));
   }, []);
 
-  // ── 拉取所有扩展点数据 ────────────────────────────────────────
-  const refreshExtensions = useCallback(async (host: PluginHost, text: string) => {
-    const [items, panelList, tbItems] = await Promise.all([
-      host.invokeExtension<StatusBarItem>("editor:status-bar", { content: text }),
-      host.invokeExtension<Panel>("editor:panel", { content: text }),
-      host.invokeExtension<ToolbarItem>("editor:toolbar", { context: host }),
-    ]);
-    setStatusBarItems(items);
-    setPanels(panelList);
+  // ── 只拉取 toolbar（toolbar 不依赖内容，仅在插件激活/停用时重新拉取）──
+  // 对标 Tiptap：toolbar 按钮列表由扩展声明，与文档内容无关，
+  // 不应该在每次内容变化时重新拉取。
+  // status-bar 和 panel 已改为插件主动推送（订阅模式），宿主不再主动问。
+  const refreshToolbar = useCallback(async (host: PluginHost) => {
+    const tbItems = await host.invokeExtension<ToolbarItem>("editor:toolbar", { context: host });
     setToolbarItems(tbItems);
   }, []);
 
   // ── 插入文字到光标位置 ────────────────────────────────────────
-  const insertAtCursor = useCallback(
-    (text: string) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart ?? 0;
-      const end = ta.selectionEnd ?? 0;
-      const next = ta.value.slice(0, start) + text + ta.value.slice(end);
-      setContent(next);
-      requestAnimationFrame(() => {
-        ta.selectionStart = start + text.length;
-        ta.selectionEnd = start + text.length;
-        ta.focus();
-      });
-      const host = hostRef.current;
-      if (!host) return;
-      host.emit("content:change", next);
-      refreshExtensions(host, next);
-    },
-    [refreshExtensions],
-  );
+  // 注入到每个插件的 context.insertText（通过 host.injectInsertText）。
+  // 插件直接调用，不经过事件中转。
+  // emit('content:change') 会触发所有订阅插件自己推送最新数据，宿主不需要再主动拉取。
+  const insertAtCursor = useCallback((text: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    const next = ta.value.slice(0, start) + text + ta.value.slice(end);
+    setContent(next);
+    requestAnimationFrame(() => {
+      ta.selectionStart = start + text.length;
+      ta.selectionEnd = start + text.length;
+      ta.focus();
+    });
+    const host = hostRef.current;
+    if (!host) return;
+    // emit 即可，wordCount/lineCount/markdownPreview 插件自己订阅并推送结果
+    host.emit("content:change", next);
+  }, []);
+
+  // 用 useLayoutEffect 同步 ref，确保每次 insertAtCursor 重建后 ref 立即更新，
+  // 且不在渲染阶段直接写 ref（满足 React 规范：ref 只能在 effect / handler 中修改）。
+  // useLayoutEffect 在 DOM 更新后、浏览器绘制前同步执行，
+  // 保证插件在下一次调用 insertText 时拿到的一定是最新版本。
+  useEffect(() => {
+    insertAtCursorRef.current = insertAtCursor;
+  }, [insertAtCursor]);
 
   // ── 包裹选区（加粗 / 斜体）────────────────────────────────────
   const wrapSelection = useCallback(
@@ -399,18 +341,19 @@ export default function PluginDemoPage() {
       });
       const host = hostRef.current;
       if (!host) return;
+      // emit 即可，订阅插件自己响应，宿主不主动拉取
       host.emit("content:change", next);
-      refreshExtensions(host, next);
     },
-    [refreshExtensions],
+    [],
   );
 
   // ── 初始化插件系统 ────────────────────────────────────────────
   useEffect(() => {
     const host = new PluginHost();
 
-    host.defineExtensionPoint("editor:status-bar");
-    host.defineExtensionPoint("editor:panel");
+    // editor:status-bar 和 editor:panel 已改为插件主动推送，不再需要扩展点定义。
+    // 只保留 editor:toolbar：toolbar 按钮列表不随内容变化，
+    // 仅在插件激活/停用时由宿主主动拉取一次。
     host.defineExtensionPoint("editor:toolbar");
 
     (async () => {
@@ -430,12 +373,58 @@ export default function PluginDemoPage() {
       }
       addLog("所有插件注册完成");
 
+      // ── 关键：在 activate 之前注入 insertText ──────────────────
+      // 对标 Tiptap：Tiptap 把整个 editor 实例（含 commands）传给扩展，
+      // 扩展通过 this.editor.commands.insertContent() 操作编辑器。
+      // 此处注入的是一个稳定的包装函数（通过 ref 间接调用），
+      // 这样即使 insertAtCursor 因 refreshExtensions 变化而重建，
+      // 插件持有的函数引用依然有效，始终调用到最新版本。
+      host.injectInsertText((text) => insertAtCursorRef.current(text));
+      addLog("insertText 能力已注入所有插件 context");
+
       // shortcut 必须最先激活，因为其他插件的 addKeyboardShortcuts 需要它的 register API 就绪
       await host.activate("shortcut");
       for (const id of ALL_PLUGIN_IDS.filter((id) => id !== "shortcut")) {
         await host.activate(id);
       }
       addLog("所有插件激活完成");
+
+      // ── 宿主监听插件推送的 UI 数据（对标 Tiptap 推送模式）──────
+      // 旧方案：宿主主动调用 invokeExtension 轮询所有插件
+      // 新方案：插件订阅 content:change，自己算好后 emit 结果，宿主只负责接收
+      //
+      // ui:status-bar:update — wordCount / lineCount 各自推送自己的数据
+      // 宿主按 id 合并到 Map，再转为数组渲染，顺序固定（Map 插入顺序）
+      // 不需要知道有多少个插件在推，也不需要关心推的顺序
+      const statusBarMap = new Map<string, StatusBarItem>();
+      host.on("ui:status-bar:update", (item: StatusBarItem & { id: string }) => {
+        statusBarMap.set(item.id, { label: item.label, value: item.value });
+        setStatusBarItems([...statusBarMap.values()]);
+      });
+
+      // ui:status-bar:remove — 插件停用时通知宿主删除自己的条目
+      // 对应旧方案：旧方案每次 toggle 后重新拉取，结果自然准确；
+      // 新方案插件主动推送，停用时必须主动告知宿主删除，否则旧数据残留在 Map 里
+      host.on("ui:status-bar:remove", ({ id }: { id: string }) => {
+        statusBarMap.delete(id);
+        setStatusBarItems([...statusBarMap.values()]);
+      });
+
+      // ui:panel:update — markdownPreview 推送渲染后的 HTML
+      // 同理，按 id 合并，支持多个面板插件共存
+      const panelMap = new Map<string, Panel>();
+      host.on("ui:panel:update", (panel: Panel) => {
+        panelMap.set(panel.id, panel);
+        setPanels([...panelMap.values()]);
+      });
+
+      // ui:panel:remove — 面板插件停用时通知宿主删除自己的面板
+      host.on("ui:panel:remove", ({ id }: { id: string }) => {
+        panelMap.delete(id);
+        setPanels([...panelMap.values()]);
+      });
+
+      addLog("宿主已订阅 ui:status-bar:update / ui:panel:update 及对应 remove 事件");
 
       // 监听 autoSave 保存成功事件
       host.on("save:success", ({ timestamp }: { timestamp: number }) => {
@@ -456,12 +445,24 @@ export default function PluginDemoPage() {
       );
 
       // 监听插件发出的"打开弹窗"事件
-      // 插件传来 { type, anchorEl }，宿主存起来，GlobalPopup 负责定位和渲染
+      // 插件传来 { anchorEl, renderContent }，宿主只负责存起来，不感知弹窗内容
+      //
+      // 与旧方案的本质区别：
+      //   旧：宿主收到 type，自己判断渲染哪个组件（宿主感知插件细节）
+      //   新：宿主收到 renderContent 函数，直接调用即可（宿主完全不感知）
+      //
+      // 这意味着：新增任何弹窗型插件，这里的代码一个字都不用改
       host.on(
         "editor:open-popup",
-        ({ type, anchorEl }: { type: "image-upload" | "emoji"; anchorEl: HTMLElement }) => {
-          setPopup({ type, anchorEl });
-          addLog(`editor:open-popup → type="${type}"（GlobalPopup 接管定位）`);
+        ({
+          anchorEl,
+          renderContent,
+        }: {
+          anchorEl: HTMLElement;
+          renderContent: (close: () => void) => ReactNode;
+        }) => {
+          setPopup({ anchorEl, renderContent });
+          addLog(`editor:open-popup → 插件提供 renderContent，宿主零感知挂载`);
         },
       );
 
@@ -482,7 +483,14 @@ export default function PluginDemoPage() {
       }
 
       hostRef.current = host;
-      await refreshExtensions(host, DEFAULT_CONTENT);
+
+      // toolbar 只拉一次（按钮列表不随内容变化）
+      await refreshToolbar(host);
+
+      // 触发一次内容变化事件，让所有订阅插件完成首次渲染
+      // wordCount / lineCount / markdownPreview 会收到并各自推送初始数据
+      host.emit("content:change", DEFAULT_CONTENT);
+      addLog("首次 emit content:change → 插件各自推送初始数据");
     })();
 
     return () => {
@@ -490,20 +498,17 @@ export default function PluginDemoPage() {
         host.uninstall(id);
       }
     };
-  }, [addLog, refreshExtensions, wrapSelection]);
+  }, [addLog, refreshToolbar, wrapSelection]);
 
   // ── 内容变化 ──────────────────────────────────────────────────
-  const handleChange = useCallback(
-    async (value: string) => {
-      setContent(value);
-      setSaveStatus("saving");
-      const host = hostRef.current;
-      if (!host) return;
-      host.emit("content:change", value);
-      await refreshExtensions(host, value);
-    },
-    [refreshExtensions],
-  );
+  // emit 后插件自己响应并推送结果，宿主不再主动拉取任何扩展点
+  const handleChange = useCallback((value: string) => {
+    setContent(value);
+    setSaveStatus("saving");
+    const host = hostRef.current;
+    if (!host) return;
+    host.emit("content:change", value);
+  }, []);
 
   // ── 插件开关 ──────────────────────────────────────────────────
   const togglePlugin = useCallback(
@@ -512,39 +517,27 @@ export default function PluginDemoPage() {
       if (!host) return;
       if (currentActive) {
         await host.deactivate(pluginId);
-        addLog(`[${pluginId}] 停用 → 从 extensionPoints 花名册摘除`);
+        addLog(`[${pluginId}] 停用`);
       } else {
         await host.activate(pluginId);
-        addLog(`[${pluginId}] 激活 → 重新挂回 extensionPoints 花名册`);
+        addLog(`[${pluginId}] 激活`);
       }
       setPluginStates((prev) =>
         prev.map((p) => (p.id === pluginId ? { ...p, active: !currentActive } : p)),
       );
-      await refreshExtensions(host, content);
+      // toolbar 按钮列表变了，重新拉取一次
+      await refreshToolbar(host);
+      // 重新触发一次内容变化，让刚激活的插件完成首次推送
+      // （停用的插件已在 deactivate 时解绑监听，不会重复推送）
+      host.emit("content:change", content);
     },
-    [addLog, refreshExtensions, content],
-  );
-
-  // ── 弹窗确认处理 ─────────────────────────────────────────────
-  const handleImageConfirm = useCallback(
-    (url: string) => {
-      if (!url.trim()) return;
-      insertAtCursor(`![图片](${url})`);
-      addLog(`imageUpload → 插入 ![图片](${url.slice(0, 30)}...)`);
-      setPopup(null);
-    },
-    [insertAtCursor, addLog],
-  );
-
-  const handleEmojiSelect = useCallback(
-    (emoji: string) => {
-      insertAtCursor(emoji);
-      addLog(`emoji → 插入 ${emoji}`);
-    },
-    [insertAtCursor, addLog],
+    [addLog, refreshToolbar, content],
   );
 
   // ── 颜色映射 ─────────────────────────────────────────────────
+  // handleImageConfirm / handleEmojiSelect 已删除：
+  //   旧方案：宿主写两个回调，分别感知"图片确认"和"表情选择"的业务逻辑
+  //   新方案：插件在 renderContent 内部直接调用 ctx.insertText()，宿主无需参与
   const statusBarColors: Record<string, string> = {
     字数: "text-blue-400 border-blue-700 bg-blue-950",
     行数: "text-purple-400 border-purple-700 bg-purple-950",
@@ -756,15 +749,14 @@ export default function PluginDemoPage() {
       </footer>
 
       {/* ── GlobalPopup：唯一弹窗容器，定位逻辑只写一次 ── */}
-      {/* 宿主只关心 anchorEl（在哪）和 type（显示什么），不感知各插件弹窗细节 */}
+      {/*                                                              */}
+      {/* 旧：宿主判断 popup.type → 渲染对应组件（宿主感知插件细节）  */}
+      {/* 新：宿主调用 popup.renderContent(close) → 挂载返回值        */}
+      {/*     宿主完全不知道里面是 ImageForm、EmojiGrid 还是别的东西   */}
+      {/*     新增任何弹窗型插件，这里一个字都不用改 ✅               */}
       {popup && (
         <GlobalPopup anchorEl={popup.anchorEl} onClose={() => setPopup(null)}>
-          {popup.type === "image-upload" && (
-            <ImageForm onConfirm={handleImageConfirm} onClose={() => setPopup(null)} />
-          )}
-          {popup.type === "emoji" && (
-            <EmojiGrid onSelect={handleEmojiSelect} onClose={() => setPopup(null)} />
-          )}
+          {popup.renderContent(() => setPopup(null))}
         </GlobalPopup>
       )}
     </div>

@@ -6,12 +6,18 @@ import { usePathname } from "next/navigation";
 const DEMO_TITLES: Record<string, string> = {
   "/demos": "Demo 广场",
   "/demos/price-engine": "价格计算引擎",
+  "/demos/canvas-annotator": "截图标注工具",
+  "/demos/rich-editor": "富文本编辑器",
+  "/demos/plugin-host": "VS Code 级插件系统",
   "/plugin-demo": "插件架构演示",
 };
 
 const DEMO_ICONS: Record<string, string> = {
   "/demos": "🎮",
   "/demos/price-engine": "💰",
+  "/demos/canvas-annotator": "🎨",
+  "/demos/rich-editor": "📝",
+  "/demos/plugin-host": "🧩",
   "/plugin-demo": "🧩",
 };
 
@@ -31,12 +37,7 @@ export default function DemosLayout({ children }: { children: React.ReactNode })
               href="/"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-all shrink-0"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -79,9 +80,7 @@ export default function DemosLayout({ children }: { children: React.ReactNode })
       </header>
 
       {/* 内容区 */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }

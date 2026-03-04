@@ -19,6 +19,20 @@ interface DemoCard {
 
 const DEMO_CARDS: DemoCard[] = [
   {
+    id: "plugin-host",
+    title: "VS Code 级插件系统",
+    subtitle: "Manifest + 按需激活 + Worker 沙箱 + 权限模型",
+    description:
+      "对标 VS Code 的插件宿主架构：Manifest 声明式贡献点、activationEvents 按需懒加载、ContextKeyService when 条件求值、PermissionGuard 权限拦截、选中浮动工具条由插件驱动、运行时 install/uninstall。",
+    href: "/demos/plugin-host",
+    icon: "🧩",
+    tags: ["Plugin Host", "Manifest", "沙箱隔离", "权限模型", "按需激活"],
+    difficulty: 5,
+    status: "ready",
+    gradient: "from-indigo-500/20 via-blue-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  {
     id: "plugin-system",
     title: "插件架构演示",
     subtitle: "PluginHost + 扩展点 + 事件总线",
@@ -73,6 +87,34 @@ const DEMO_CARDS: DemoCard[] = [
     gradient: "from-purple-500/20 via-violet-500/10 to-transparent",
     pattern: "tenant",
   },
+  {
+    id: "canvas-annotator",
+    title: "截图标注工具",
+    subtitle: "Command + Strategy + Undo/Redo",
+    description:
+      "对标 Excalidraw/Figma 的截图标注工具：Action/ActionManager 命令模式、Tool 策略模式（画笔/矩形/圆形/箭头/文字/橡皮擦/选择）、HistoryManager 撤销重做栈、二级属性面板动态渲染。",
+    href: "/demos/canvas-annotator",
+    icon: "🎨",
+    tags: ["Command 模式", "Strategy 模式", "Undo/Redo", "Canvas"],
+    difficulty: 4,
+    status: "ready",
+    gradient: "from-rose-500/20 via-pink-500/10 to-transparent",
+    pattern: "annotator",
+  },
+  {
+    id: "rich-editor",
+    title: "富文本编辑器",
+    subtitle: "Editor Extension + BubbleMenu + Transaction",
+    description:
+      "对标 medium-editor/Tiptap：Extension/Button/Form 三层模型、Selection 驱动按钮状态、EditorState + Transaction 不可变状态流转、固定 Toolbar + 浮动 BubbleMenu 同一套机制、字数统计、自动保存。",
+    href: "/demos/rich-editor",
+    icon: "📝",
+    tags: ["Extension 模型", "Selection 驱动", "Transaction", "BubbleMenu"],
+    difficulty: 4,
+    status: "ready",
+    gradient: "from-emerald-500/20 via-teal-500/10 to-transparent",
+    pattern: "editor",
+  },
 ];
 
 // ==================== 辅助组件 ====================
@@ -92,6 +134,49 @@ function DifficultyDots({ value }: { value: number }) {
 }
 
 function PatternBg({ pattern }: { pattern: string }) {
+  if (pattern === "annotator") {
+    return (
+      <svg
+        className="absolute inset-0 w-full h-full opacity-[0.03] pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern id="annotator-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <rect
+              x="8"
+              y="8"
+              width="32"
+              height="32"
+              rx="4"
+              fill="none"
+              stroke="white"
+              strokeWidth="1"
+            />
+            <line x1="8" y1="8" x2="40" y2="40" stroke="white" strokeWidth="0.5" />
+            <circle cx="24" cy="24" r="6" fill="none" stroke="white" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#annotator-grid)" />
+      </svg>
+    );
+  }
+  if (pattern === "editor") {
+    return (
+      <svg
+        className="absolute inset-0 w-full h-full opacity-[0.03] pointer-events-none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern id="editor-grid" width="48" height="24" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="12" x2="48" y2="12" stroke="white" strokeWidth="0.5" />
+            <rect x="4" y="6" width="14" height="4" rx="1" fill="white" opacity="0.5" />
+            <rect x="22" y="6" width="8" height="4" rx="1" fill="white" opacity="0.3" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#editor-grid)" />
+      </svg>
+    );
+  }
   if (pattern === "pipeline") {
     return (
       <svg

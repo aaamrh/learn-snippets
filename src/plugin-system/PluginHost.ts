@@ -73,6 +73,15 @@ class SharedContext {
     return this._host["contexts"].get(id) ?? null;
   }
 
+  // ── 编辑器能力注入 ────────────────────────────────────────────
+  // 默认 no-op，宿主在 activate 之前通过 ctx.insertText = fn 覆盖实例方法。
+  // 参考 Tiptap editor.commands：插件通过 commands 操作编辑器，
+  // 不直接依赖宿主的 React state，实现插件与宿主 UI 解耦。
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  insertText(_text: string): void {
+    // no-op，等待宿主注入
+  }
+
   // ── 扩展点注册 ────────────────────────────────────────────────
   registerExtension(point: string, handler: ExtensionHandler) {
     const handlers = this._host["extensionPoints"].get(point);
@@ -319,6 +328,27 @@ export class PluginHost {
 
   getExtensionPoints(): string[] {
     return Array.from(this.extensionPoints.keys());
+  }
+
+  /**
+   * 向所有已注册插件的 context 注入 insertText 能力
+   * 宿主在 activate 插件之前调用一次，把编辑器的"插入文字"能力下发给每个插件。
+   *
+   * 为什么用注入而不是事件？
+   *   插件需要"同步调用"插入动作（用户点击选择表情后立即插入），
+   *   如果改用事件，插件 emit → 宿主监听 → 插入，是异步的，
+   *   且宿主还要感知是哪个插件发来的内容（又回到原来的问题）。
+   *   注入函数是最干净的方案：插件拿到函数引用，直接调用，宿主不感知。
+   *
+   * 对标 Tiptap：
+   *   Tiptap 把整个 editor 实例（含 commands）传给扩展，
+   *   扩展通过 this.editor.commands.insertContent() 操作编辑器。
+   *   此处简化为只注入 insertText 一个函数，原理完全相同。
+   */
+  injectInsertText(fn: (text: string) => void): void {
+    for (const ctx of this.contexts.values()) {
+      ctx.insertText = fn;
+    }
   }
 
   /**

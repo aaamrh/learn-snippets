@@ -39,6 +39,17 @@ export interface PluginContext {
   getContext(id: string): PluginContext | null;
 
   /**
+   * 向编辑器光标位置插入文字
+   * 由宿主在初始化时注入，插件通过此方法插入内容，
+   * 无需知道宿主的 React state 结构，实现插件与宿主 UI 的解耦。
+   *
+   * 对标 Tiptap 的 editor.commands.insertContent()：
+   *   Tiptap 插件通过 commands 操作编辑器，而不是直接操作 DOM / state
+   *   此处简化为一个注入函数，原理相同。
+   */
+  insertText(text: string): void;
+
+  /**
    * 向指定扩展点注册一个 handler
    * 扩展点必须已由宿主通过 defineExtensionPoint 定义
    */
