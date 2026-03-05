@@ -424,18 +424,18 @@ export class NewPluginHost {
     // 1. 注册到 Registry
     this.registry.install(manifest);
 
-    // 2. 注册贡献点
-    this.contributions.registerContributions(manifest.id, manifest);
-
-    // 3. 注册配置 schema（如果有 contributes.configuration）
+    // 2. 注册配置 schema（如果有 contributes.configuration）
+    // 注意：贡献点（菜单/命令/状态栏）不在此处注册。
+    // 对标 VS Code：install ≠ enable，贡献点只有在插件激活后才生效。
+    // registerContributions 在 handleActivationCallback 中调用。
     if (manifest.contributes?.configuration) {
       this.configurationService.registerSchema(manifest.id, manifest.contributes.configuration);
     }
 
-    // 4. 注册快捷键到事件系统
+    // 3. 注册快捷键到事件系统
     this.setupKeybindings(manifest.id);
 
-    // 4. 触发事件
+    // 4. 触发事件（此时插件仅"已安装"，贡献点尚未生效，等待激活）
     this.emit({
       type: "plugin-installed",
       pluginId: manifest.id,
@@ -645,6 +645,9 @@ export class NewPluginHost {
       if (sandbox) {
         await sandbox.deactivate();
       }
+
+      // 注销贡献点（对标 VS Code：disable 插件后菜单/命令/状态栏立即从 UI 消失）
+      this.contributions.unregisterContributions(pluginId);
 
       // 释放 Disposable
       this.registry.disposeAll(pluginId);
@@ -1086,11 +1089,21 @@ export class NewPluginHost {
     this.guards.set(pluginId, guard);
     this.pluginAPIs.set(pluginId, guardedAPI);
 
-    // 6. 通过沙箱激活插件
+    // 6. 注册贡献点（必须在 sandbox.activate 之前）
+    // 原因：插件 activate() 内部调用 api.commands.registerCommand(id, handler)，
+    // ContributionManager.registerCommandHandler 的逻辑是：
+    //   - 如果 commands Map 里已有该 commandId → 直接写入 handler（正确路径）
+    //   - 如果 commands Map 里没有该 commandId → 创建 pluginId="__runtime__" 的临时条目
+    // 若先 activate 再 registerContributions，registerCommands 会用 handler:null 覆盖
+    // 刚才写入的 handler，导致命令执行时找不到 handler 而报错。
+    this.contributions.registerContributions(manifest.id, manifest);
+
+    // 7. 通过沙箱激活插件
     try {
       await sandbox.activate(guardedAPI);
     } catch (error) {
-      // 激活失败，清理资源
+      // 激活失败，清理资源（同时撤销刚才注册的贡献点）
+      this.contributions.unregisterContributions(pluginId);
       sandbox.destroy();
       this.sandboxes.delete(pluginId);
       this.guards.delete(pluginId);
@@ -1098,13 +1111,13 @@ export class NewPluginHost {
       throw error;
     }
 
-    // 7. 更新上下文变量
+    // 8. 更新上下文变量
     this.contextKeys.set(`pluginActive.${pluginId}`, true);
 
-    // 8. 记录激活成功（重置连续错误计数）
+    // 9. 记录激活成功（重置连续错误计数）
     this.errorBoundary.recordSuccess(pluginId);
 
-    // 9. 触发事件
+    // 10. 触发事件
     this.emit({ type: "plugin-activated", pluginId, reason });
   }
 
