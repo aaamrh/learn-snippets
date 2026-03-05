@@ -1218,6 +1218,13 @@ export const EXAMPLE_EMOJI_MANIFEST: PluginManifest = {
         icon: "😊",
       },
     ],
+    menus: [
+      {
+        command: "emoji-picker.insert",
+        group: "editor/title",
+        order: 1,
+      },
+    ],
   },
 };
 
@@ -1247,6 +1254,13 @@ export const EXAMPLE_IMAGE_UPLOAD_MANIFEST: PluginManifest = {
         command: "image-upload.insert",
         title: "插入图片",
         icon: "🖼",
+      },
+    ],
+    menus: [
+      {
+        command: "image-upload.insert",
+        group: "editor/title",
+        order: 2,
       },
     ],
   },

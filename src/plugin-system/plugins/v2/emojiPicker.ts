@@ -39,48 +39,132 @@ const EMOJI_GROUPS: EmojiGroup[] = [
     label: "表情",
     icon: "😀",
     emojis: [
-      "😀", "😂", "😍", "🤔", "😎", "🥳", "😭", "🤩",
-      "😅", "😊", "🙃", "😇", "🥰", "😋", "😜", "🤗",
+      "😀",
+      "😂",
+      "😍",
+      "🤔",
+      "😎",
+      "🥳",
+      "😭",
+      "🤩",
+      "😅",
+      "😊",
+      "🙃",
+      "😇",
+      "🥰",
+      "😋",
+      "😜",
+      "🤗",
     ],
   },
   {
     label: "手势",
     icon: "👍",
     emojis: [
-      "👍", "👎", "👏", "🙏", "💪", "🤝", "✌️", "🤞",
-      "👋", "🤙", "👌", "✊", "🤜", "🤛", "☝️", "👆",
+      "👍",
+      "👎",
+      "👏",
+      "🙏",
+      "💪",
+      "🤝",
+      "✌️",
+      "🤞",
+      "👋",
+      "🤙",
+      "👌",
+      "✊",
+      "🤜",
+      "🤛",
+      "☝️",
+      "👆",
     ],
   },
   {
     label: "符号",
     icon: "❤️",
     emojis: [
-      "❤️", "💔", "💯", "🔥", "⭐", "✨", "🎉", "🎊",
-      "💡", "💎", "🏆", "🎯", "🚀", "⚡", "💫", "🌈",
+      "❤️",
+      "💔",
+      "💯",
+      "🔥",
+      "⭐",
+      "✨",
+      "🎉",
+      "🎊",
+      "💡",
+      "💎",
+      "🏆",
+      "🎯",
+      "🚀",
+      "⚡",
+      "💫",
+      "🌈",
     ],
   },
   {
     label: "动物",
     icon: "🐶",
     emojis: [
-      "🐶", "🐱", "🐭", "🐻", "🦊", "🐼", "🐨", "🦁",
-      "🐯", "🐸", "🐵", "🐧", "🦄", "🐝", "🦋", "🐢",
+      "🐶",
+      "🐱",
+      "🐭",
+      "🐻",
+      "🦊",
+      "🐼",
+      "🐨",
+      "🦁",
+      "🐯",
+      "🐸",
+      "🐵",
+      "🐧",
+      "🦄",
+      "🐝",
+      "🦋",
+      "🐢",
     ],
   },
   {
     label: "食物",
     icon: "🍎",
     emojis: [
-      "🍎", "🍊", "🍋", "🍇", "🍓", "🍕", "🍔", "🍜",
-      "🍦", "🍩", "🎂", "🍰", "🍫", "🍿", "☕", "🍺",
+      "🍎",
+      "🍊",
+      "🍋",
+      "🍇",
+      "🍓",
+      "🍕",
+      "🍔",
+      "🍜",
+      "🍦",
+      "🍩",
+      "🎂",
+      "🍰",
+      "🍫",
+      "🍿",
+      "☕",
+      "🍺",
     ],
   },
   {
     label: "物品",
     icon: "💻",
     emojis: [
-      "⚽", "🏀", "🎮", "🎵", "🎸", "📷", "💻", "📱",
-      "📚", "🔑", "🎁", "📦", "🔔", "🗓️", "📌", "✏️",
+      "⚽",
+      "🏀",
+      "🎮",
+      "🎵",
+      "🎸",
+      "📷",
+      "💻",
+      "📱",
+      "📚",
+      "🔑",
+      "🎁",
+      "📦",
+      "🔔",
+      "🗓️",
+      "📌",
+      "✏️",
     ],
   },
 ];
@@ -115,6 +199,16 @@ export interface EmojiPopupData {
   allEmojis: string[];
   /** 选择表情后要执行的命令 ID（宿主调用 executeCommand 传入选中的 emoji） */
   onSelectCommand: string;
+  /**
+   * 触发此弹窗的命令 ID（对标 GenericPopupData.triggerCommand）
+   * 宿主用此字段定位锚定按钮，无需写死具体插件 ID。
+   */
+  triggerCommand: string;
+  /**
+   * 执行主操作后是否自动关闭弹窗
+   * 表情选择后保持弹窗打开，允许连续插入多个表情。
+   */
+  closeOnAction: boolean;
 }
 
 // ==================== 插件入口 ====================
@@ -149,6 +243,8 @@ const emojiPickerPlugin: PluginEntry = {
         groups: EMOJI_GROUPS,
         allEmojis: ALL_EMOJIS,
         onSelectCommand: "emoji-picker.doInsert",
+        triggerCommand: "emoji-picker.insert",
+        closeOnAction: false,
       };
 
       api.events.emit("ui:show-popup", popupData);
@@ -157,33 +253,30 @@ const emojiPickerPlugin: PluginEntry = {
     });
 
     // ── 注册「实际插入表情」命令 ──
-    api.commands.registerCommand(
-      "emoji-picker.doInsert",
-      async (...args: unknown[]) => {
-        const emoji = args[0];
+    api.commands.registerCommand("emoji-picker.doInsert", async (...args: unknown[]) => {
+      const emoji = args[0];
 
-        if (typeof emoji !== "string" || emoji.trim() === "") {
-          console.warn("[EmojiPicker] doInsert called without valid emoji string.");
-          return { success: false, reason: "invalid-emoji" };
-        }
-
-        try {
-          await api.editor.insertText(emoji);
-          console.log(`[EmojiPicker] Inserted emoji: ${emoji}`);
-          return { success: true, emoji };
-        } catch (error) {
-          console.error("[EmojiPicker] Failed to insert emoji:", error);
-          return {
-            success: false,
-            reason: "insert-failed",
-            error: error instanceof Error ? error.message : String(error),
-          };
-        }
+      if (typeof emoji !== "string" || emoji.trim() === "") {
+        console.warn("[EmojiPicker] doInsert called without valid emoji string.");
+        return { success: false, reason: "invalid-emoji" };
       }
-    );
+
+      try {
+        await api.editor.insertText(emoji);
+        console.log(`[EmojiPicker] Inserted emoji: ${emoji}`);
+        return { success: true, emoji };
+      } catch (error) {
+        console.error("[EmojiPicker] Failed to insert emoji:", error);
+        return {
+          success: false,
+          reason: "insert-failed",
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
 
     console.log(
-      `[EmojiPicker] Plugin activated. ${ALL_EMOJIS.length} emojis in ${EMOJI_GROUPS.length} groups.`
+      `[EmojiPicker] Plugin activated. ${ALL_EMOJIS.length} emojis in ${EMOJI_GROUPS.length} groups.`,
     );
   },
 

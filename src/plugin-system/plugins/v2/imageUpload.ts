@@ -49,6 +49,16 @@ export interface ImageUploadPopupData {
   onConfirmCommand: string;
   /** 预设的示例图片 URL（可选，方便用户快速测试） */
   exampleUrls: ImageExample[];
+  /**
+   * 触发此弹窗的命令 ID（对标 GenericPopupData.triggerCommand）
+   * 宿主用此字段定位锚定按钮，无需写死具体插件 ID。
+   */
+  triggerCommand: string;
+  /**
+   * 执行主操作后是否自动关闭弹窗
+   * 图片插入后自动关闭，符合"一次性操作"语义。
+   */
+  closeOnAction: boolean;
 }
 
 /**
@@ -180,6 +190,8 @@ const imageUploadPlugin: PluginEntry = {
         placeholder: "输入图片 URL，如 https://example.com/photo.jpg",
         onConfirmCommand: "image-upload.doInsert",
         exampleUrls: EXAMPLE_IMAGES,
+        triggerCommand: "image-upload.insert",
+        closeOnAction: true,
       };
 
       api.events.emit("ui:show-popup", popupData);
@@ -188,51 +200,48 @@ const imageUploadPlugin: PluginEntry = {
     });
 
     // ── 注册「实际插入图片」命令 ──
-    api.commands.registerCommand(
-      "image-upload.doInsert",
-      async (...args: unknown[]) => {
-        const url = args[0];
+    api.commands.registerCommand("image-upload.doInsert", async (...args: unknown[]) => {
+      const url = args[0];
 
-        if (typeof url !== "string" || url.trim() === "") {
-          console.warn("[ImageUpload] doInsert called without valid URL.");
-          return { success: false, reason: "empty-url" };
-        }
-
-        // 校验 URL 格式
-        if (!isValidImageUrl(url)) {
-          console.warn(`[ImageUpload] Invalid image URL: "${url}"`);
-          return { success: false, reason: "invalid-url" };
-        }
-
-        try {
-          // 转换为 Markdown 图片语法
-          const markdown = toMarkdownImage(url.trim());
-
-          // 插入到编辑器
-          await api.editor.insertText(markdown);
-
-          console.log(`[ImageUpload] Inserted image: ${url}`);
-
-          // 通知宿主插入成功
-          api.events.emit("image-upload:inserted", {
-            url: url.trim(),
-            markdown,
-          });
-
-          return { success: true, url: url.trim(), markdown };
-        } catch (error) {
-          console.error("[ImageUpload] Failed to insert image:", error);
-          return {
-            success: false,
-            reason: "insert-failed",
-            error: error instanceof Error ? error.message : String(error),
-          };
-        }
+      if (typeof url !== "string" || url.trim() === "") {
+        console.warn("[ImageUpload] doInsert called without valid URL.");
+        return { success: false, reason: "empty-url" };
       }
-    );
+
+      // 校验 URL 格式
+      if (!isValidImageUrl(url)) {
+        console.warn(`[ImageUpload] Invalid image URL: "${url}"`);
+        return { success: false, reason: "invalid-url" };
+      }
+
+      try {
+        // 转换为 Markdown 图片语法
+        const markdown = toMarkdownImage(url.trim());
+
+        // 插入到编辑器
+        await api.editor.insertText(markdown);
+
+        console.log(`[ImageUpload] Inserted image: ${url}`);
+
+        // 通知宿主插入成功
+        api.events.emit("image-upload:inserted", {
+          url: url.trim(),
+          markdown,
+        });
+
+        return { success: true, url: url.trim(), markdown };
+      } catch (error) {
+        console.error("[ImageUpload] Failed to insert image:", error);
+        return {
+          success: false,
+          reason: "insert-failed",
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
 
     console.log(
-      `[ImageUpload] Plugin activated. ${EXAMPLE_IMAGES.length} example images available.`
+      `[ImageUpload] Plugin activated. ${EXAMPLE_IMAGES.length} example images available.`,
     );
   },
 

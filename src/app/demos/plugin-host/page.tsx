@@ -33,34 +33,18 @@ import {
 } from "@/plugin-system/plugins/v2";
 import type { V2PluginDescriptor } from "@/plugin-system/plugins/v2";
 
-// ── 插件弹窗数据类型 ──────────────────────────────────────────
-import type { EmojiPopupData } from "@/plugin-system/plugins/v2/emojiPicker";
-import type { ImageUploadPopupData } from "@/plugin-system/plugins/v2/imageUpload";
+// ── 插件弹窗数据类型 / 共享类型 ──────────────────────────────────
+// 宿主只感知通用接口，不 import 任何具体插件的类型。
+// 对标 VS Code：宿主不知道弹窗内容是什么，只知道有一个 type 字段用于查表。
+import type {
+  GenericPopupData,
+  PopupRendererProps,
+  SidebarPanel,
+  TreeNode,
+  ConfigEntry,
+} from "./types";
 
-type PopupData = EmojiPopupData | ImageUploadPopupData;
-
-// ── 侧栏类型 ──────────────────────────────────────────────────
-type SidebarPanel = "outline" | "settings" | null;
-
-// ── TreeView 节点 ──────────────────────────────────────────────
-interface TreeNode {
-  id: string;
-  label: string;
-  icon?: string;
-  description?: string;
-  collapsibleState?: "collapsed" | "expanded" | "none";
-  command?: { commandId: string; args?: unknown[] };
-  children?: TreeNode[];
-}
-
-// ── 配置项条目 ──────────────────────────────────────────────────
-interface ConfigEntry {
-  pluginId: string;
-  pluginName: string;
-  key: string;
-  schema: ConfigurationPropertySchema;
-  value: unknown;
-}
+type PopupData = GenericPopupData;
 
 // ==================== 默认编辑内容 ====================
 
@@ -917,7 +901,6 @@ export default function PluginHostDemoPage() {
             onExecuteCommand={handleExecuteCommand}
             onEditorAction={handleEditorAction}
             onPopupAction={handlePopupAction}
-            activePlugins={activePlugins}
             popupData={popupData}
             onPopupClose={() => setPopupData(null)}
           />
@@ -1403,7 +1386,6 @@ function EditorToolbar({
   onExecuteCommand,
   onEditorAction,
   onPopupAction,
-  activePlugins,
   popupData,
   onPopupClose,
 }: {
@@ -1411,7 +1393,6 @@ function EditorToolbar({
   onExecuteCommand: (commandId: string) => void;
   onEditorAction: (action: "bold" | "italic") => void;
   onPopupAction: (commandId: string, ...args: unknown[]) => void;
-  activePlugins: Set<string>;
   popupData: PopupData | null;
   onPopupClose: () => void;
 }) {
@@ -1420,12 +1401,9 @@ function EditorToolbar({
   const popoverRef = useRef<HTMLDivElement>(null);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
 
-  // 根据 popupData 推导触发按钮 ID
-  const popupTrigger = popupData
-    ? popupData.type === "emoji-picker"
-      ? "emoji-picker.insert"
-      : "image-upload.insert"
-    : null;
+  // 触发按钮 ID 直接从 popupData.triggerCommand 读取
+  // 对标 VS Code：宿主不再写死 type → commandId 的映射
+  const popupTrigger = popupData?.triggerCommand ?? null;
 
   // 点击外部关闭弹窗
   useEffect(() => {
@@ -1481,21 +1459,11 @@ function EditorToolbar({
     },
   ];
 
-  // 插件按钮（需要插件系统）
-  const pluginButtons = [
-    {
-      commandId: "emoji-picker.insert",
-      icon: "😊",
-      title: "插入表情",
-      pluginId: "emoji-picker",
-    },
-    {
-      commandId: "image-upload.insert",
-      icon: "🖼",
-      title: "插入图片",
-      pluginId: "image-upload",
-    },
-  ];
+  // 插件按钮：从 ContributionManager 读取 editor/title 菜单贡献
+  // 对标 VS Code menus["editor/title"]：宿主不感知具体插件，只渲染命令元数据
+  const editorTitleMenus = host
+    ? (host.contributions.getVisibleMenusByGroup().get("editor/title") ?? [])
+    : [];
 
   const handlePluginButtonClick = (commandId: string) => {
     // 如果该弹窗已打开 → toggle 关闭
@@ -1531,21 +1499,23 @@ function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-800 mx-1" />
 
-      {/* 插件按钮 */}
-      {pluginButtons.map((btn) => {
-        const isPluginActive = activePlugins.has(btn.pluginId);
-        const isPopupOpen = popupTrigger === btn.commandId && popupData != null;
+      {/* 插件按钮 — 由 editor/title 菜单贡献点驱动，宿主不写死任何插件 ID */}
+      {editorTitleMenus.map((menu) => {
+        const cmd = host?.contributions.getCommand(menu.command);
+        const icon = cmd?.contribution.icon ?? "🔌";
+        const title = cmd?.contribution.title ?? menu.command;
+        const isPopupOpen = popupTrigger === menu.command && popupData != null;
 
         return (
           <button
             type="button"
-            key={btn.commandId}
+            key={menu.command}
             ref={(el) => {
-              if (el) buttonRefs.current.set(btn.commandId, el);
+              if (el) buttonRefs.current.set(menu.command, el);
             }}
-            onClick={() => handlePluginButtonClick(btn.commandId)}
+            onClick={() => handlePluginButtonClick(menu.command)}
             disabled={!host}
-            title={`${btn.title}${isPluginActive ? "" : " (点击时自动激活插件)"}`}
+            title={title}
             className={`
               w-8 h-8 flex items-center justify-center rounded-md text-base
               transition-all duration-150
@@ -1557,7 +1527,7 @@ function EditorToolbar({
               }
             `}
           >
-            {btn.icon}
+            {icon}
           </button>
         );
       })}
@@ -1572,59 +1542,58 @@ function EditorToolbar({
         <span>翻译</span>
       </div>
 
-      {/* ── 锚定弹窗（popover） ── */}
-      {popupData && popoverPos && (
-        <div
-          ref={popoverRef}
-          className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-[fadeInUp_150ms_ease]"
-          style={{ top: popoverPos.top, left: popoverPos.left }}
-        >
-          {popupData.type === "emoji-picker" && (
-            <EmojiPopup
-              data={popupData}
-              onSelect={(...args) => {
-                onPopupAction(...args);
-              }}
-              onClose={onPopupClose}
-            />
-          )}
-          {popupData.type === "image-upload" && (
-            <ImageUploadPopup
-              data={popupData}
-              onConfirm={(...args) => {
-                onPopupAction(...args);
-              }}
-              onClose={onPopupClose}
-            />
-          )}
-        </div>
-      )}
+      {/* ── 锚定弹窗（popover）— 通过注册表查找渲染器，宿主不感知具体弹窗类型 ── */}
+      {popupData &&
+        popoverPos &&
+        (() => {
+          const Renderer = popupRendererRegistry.get(popupData.type);
+          if (!Renderer) return null;
+          return (
+            <div
+              ref={popoverRef}
+              className="fixed z-[9999] bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-[fadeInUp_150ms_ease]"
+              style={{ top: popoverPos.top, left: popoverPos.left }}
+            >
+              <Renderer
+                data={popupData}
+                onAction={(commandId: string, ...args: unknown[]) =>
+                  onPopupAction(commandId, ...args)
+                }
+                onClose={onPopupClose}
+              />
+            </div>
+          );
+        })()}
     </div>
   );
 }
 
 // ==================== EmojiPopup 表情面板 ====================
+//
+// 遵循统一的 PopupRendererProps 接口。
+// 宿主通过 popupRendererRegistry 查表调用，不需要 import 此组件。
+// 内部通过类型断言访问 emoji-picker 专有字段。
 
-function EmojiPopup({
-  data,
-  onSelect,
-  onClose,
-}: {
-  data: EmojiPopupData;
-  onSelect: (commandId: string, ...args: unknown[]) => void;
-  onClose: () => void;
-}) {
+function EmojiPopup({ data, onAction, onClose }: PopupRendererProps) {
+  // 类型断言：此组件只会在 type === "emoji-picker" 时被调用
+  const d = data as GenericPopupData & {
+    title: string;
+    groups: Array<{ label: string; icon: string; emojis: string[] }>;
+    allEmojis: string[];
+    onSelectCommand: string;
+  };
+
   const [activeGroup, setActiveGroup] = useState(0);
   const [search, setSearch] = useState("");
 
   const displayEmojis = search
-    ? data.allEmojis.filter(() => true)
-    : (data.groups[activeGroup]?.emojis ?? []);
+    ? d.allEmojis.filter(() => true)
+    : (d.groups[activeGroup]?.emojis ?? []);
 
   return (
     <div className="w-80">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
-        <span className="text-sm font-semibold text-white">{data.title}</span>
+        <span className="text-sm font-semibold text-white">{d.title}</span>
         <button
           type="button"
           onClick={onClose}
@@ -1635,7 +1604,7 @@ function EmojiPopup({
       </div>
 
       <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-gray-800/50">
-        {data.groups.map((group, index) => (
+        {d.groups.map((group, index) => (
           <button
             type="button"
             key={group.label}
@@ -1659,7 +1628,7 @@ function EmojiPopup({
           <button
             type="button"
             key={emoji}
-            onClick={() => onSelect(data.onSelectCommand, emoji)}
+            onClick={() => onAction(d.onSelectCommand, emoji)}
             className="w-8 h-8 flex items-center justify-center text-lg rounded hover:bg-gray-700 transition-colors leading-none"
             title={emoji}
           >
@@ -1669,23 +1638,26 @@ function EmojiPopup({
       </div>
 
       <div className="px-4 py-2 border-t border-gray-800/50 text-[10px] text-gray-600">
-        点击表情即可插入 · 共 {data.allEmojis.length} 个表情
+        点击表情即可插入 · 共 {d.allEmojis.length} 个表情
       </div>
     </div>
   );
 }
 
 // ==================== ImageUploadPopup ====================
+//
+// 遵循统一的 PopupRendererProps 接口。
+// 内部通过类型断言访问 image-upload 专有字段。
 
-function ImageUploadPopup({
-  data,
-  onConfirm,
-  onClose,
-}: {
-  data: ImageUploadPopupData;
-  onConfirm: (commandId: string, ...args: unknown[]) => void;
-  onClose: () => void;
-}) {
+function ImageUploadPopup({ data, onAction, onClose }: PopupRendererProps) {
+  // 类型断言：此组件只会在 type === "image-upload" 时被调用
+  const d = data as GenericPopupData & {
+    title: string;
+    placeholder: string;
+    onConfirmCommand: string;
+    exampleUrls: Array<{ label: string; url: string }>;
+  };
+
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -1695,14 +1667,14 @@ function ImageUploadPopup({
 
   const handleSubmit = () => {
     if (url.trim()) {
-      onConfirm(data.onConfirmCommand, url.trim());
+      onAction(d.onConfirmCommand, url.trim());
     }
   };
 
   return (
     <div className="w-96">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800">
-        <span className="text-sm font-semibold text-white">{data.title}</span>
+        <span className="text-sm font-semibold text-white">{d.title}</span>
         <button
           type="button"
           onClick={onClose}
@@ -1722,15 +1694,15 @@ function ImageUploadPopup({
             if (e.key === "Enter" && url.trim()) handleSubmit();
             if (e.key === "Escape") onClose();
           }}
-          placeholder={data.placeholder}
+          placeholder={d.placeholder}
           className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-gray-600"
         />
 
-        {data.exampleUrls.length > 0 && (
+        {d.exampleUrls.length > 0 && (
           <div>
             <span className="text-[10px] text-gray-600 block mb-1.5">快速选择示例：</span>
             <div className="flex flex-wrap gap-1.5">
-              {data.exampleUrls.map((example) => (
+              {d.exampleUrls.map((example) => (
                 <button
                   type="button"
                   key={example.url}
@@ -1765,6 +1737,20 @@ function ImageUploadPopup({
     </div>
   );
 }
+
+// ==================== popupRendererRegistry ====================
+//
+// 对标 VS Code 的 WebviewViewProvider 注册表：
+// 宿主只维护一张 type → Component 的映射表，完全不感知具体弹窗。
+// 新增弹窗类型只需：1) 插件 emit type  2) 此处注册一行
+// page.tsx 的其余代码一行都不用改。
+const popupRendererRegistry = new Map<
+  string,
+  React.ComponentType<import("./types").PopupRendererProps>
+>([
+  ["emoji-picker", EmojiPopup],
+  ["image-upload", ImageUploadPopup],
+]);
 
 // ==================== BottomPanels 底部面板 ====================
 
