@@ -54,23 +54,11 @@ export interface TextElement extends BaseElement {
   fontFamily: string;
 }
 
-export type CanvasElement =
-  | PenElement
-  | RectElement
-  | CircleElement
-  | ArrowElement
-  | TextElement;
+export type CanvasElement = PenElement | RectElement | CircleElement | ArrowElement | TextElement;
 
 // ==================== App State ====================
 
-export type ToolType =
-  | "pen"
-  | "rect"
-  | "circle"
-  | "arrow"
-  | "text"
-  | "eraser"
-  | "select";
+export type ToolType = "pen" | "rect" | "circle" | "arrow" | "text" | "eraser" | "select";
 
 export interface AppState {
   activeTool: ToolType;
@@ -88,6 +76,13 @@ export interface AppState {
   // UI 状态
   isDrawing: boolean;
   cursorType: string;
+  /**
+   * 当前打开的对话框名称（对标 Excalidraw 的 openDialog）
+   * null 表示没有打开任何对话框
+   */
+  openDialog: "translate" | null;
+  /** 翻译目标语言（与 openDialog 解耦，切换语言不关闭弹窗） */
+  translateTargetLang: string;
 }
 
 export function createDefaultAppState(): AppState {
@@ -104,6 +99,8 @@ export function createDefaultAppState(): AppState {
     zoom: 1,
     isDrawing: false,
     cursorType: "crosshair",
+    openDialog: null,
+    translateTargetLang: "en",
   };
 }
 
@@ -133,10 +130,7 @@ export interface Action {
   /** 快捷键匹配测试 */
   keyTest?: (event: KeyboardEvent, appState: Readonly<AppState>) => boolean;
   /** 当前上下文是否可用 */
-  predicate?: (
-    elements: readonly CanvasElement[],
-    appState: Readonly<AppState>,
-  ) => boolean;
+  predicate?: (elements: readonly CanvasElement[], appState: Readonly<AppState>) => boolean;
   /** 快捷键优先级（数字越大越先匹配） */
   keyPriority?: number;
   /** Action 自带的面板组件（用于二级工具条） */
@@ -199,10 +193,7 @@ export interface PropertyPanelConfig {
   items: PropertyPanelItem[];
 }
 
-export type PropertyPanelItem =
-  | ColorPickerPanelItem
-  | SliderPanelItem
-  | ButtonGroupPanelItem;
+export type PropertyPanelItem = ColorPickerPanelItem | SliderPanelItem | ButtonGroupPanelItem;
 
 export interface ColorPickerPanelItem {
   type: "color-picker";

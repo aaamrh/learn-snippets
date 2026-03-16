@@ -18,6 +18,122 @@ interface DemoCard {
 }
 
 const DEMO_CARDS: DemoCard[] = [
+  // ==================== 基础设施层 ====================
+  {
+    id: "di-container",
+    title: "依赖注入容器",
+    subtitle: "Token + Provider + Scope + Factory",
+    description:
+      "轻量级 DI 容器：Token 解耦依赖、singleton/transient/scoped 作用域、Factory 延迟创建、支持依赖链自动解析，切换实现无需修改业务代码。",
+    href: "/demos/di-container",
+    icon: "💉",
+    tags: ["DI", "IoC", "解耦", "可测试性"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-cyan-500/20 via-blue-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  {
+    id: "hook-system",
+    title: "Hook 钩子系统",
+    subtitle: "SyncHook + AsyncHook + Waterfall + Bail",
+    description:
+      "对标 Webpack Tapable：同步/异步钩子、瀑布流（数据依次变换）、熔断（首个返回值即停止）、优先级控制执行顺序，实现插件化架构的基础。",
+    href: "/demos/hook-system",
+    icon: "🪝",
+    tags: ["Hook", "插件化", "可扩展", "Tapable"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-violet-500/20 via-purple-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  {
+    id: "event-bus",
+    title: "事件总线",
+    subtitle: "Pub/Sub + 类型安全 + 命名空间",
+    description:
+      "类型安全的发布/订阅模式：事件名和 payload 都有类型检查、命名空间隔离、事件历史追溯、waitFor Promise 化，解耦组件间通信。",
+    href: "/demos/event-bus",
+    icon: "📡",
+    tags: ["Pub/Sub", "解耦", "类型安全", "事件驱动"],
+    difficulty: 2,
+    status: "ready",
+    gradient: "from-pink-500/20 via-rose-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  // ==================== 业务支撑层 ====================
+  {
+    id: "permission-system",
+    title: "权限系统",
+    subtitle: "Role + Permission + Policy + Guard",
+    description:
+      "声明式权限管理：角色继承、通配符匹配、动态策略（只能编辑自己的订单）、React 组件集成，告别 if-else 权限判断。",
+    href: "/demos/permission-system",
+    icon: "🔐",
+    tags: ["RBAC", "策略模式", "声明式", "权限控制"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-red-500/20 via-orange-500/10 to-transparent",
+    pattern: "tenant",
+  },
+  {
+    id: "config-center",
+    title: "配置中心",
+    subtitle: "分层配置 + 热更新 + 持久化",
+    description:
+      "分层配置管理：defaults → env → user 优先级覆盖、深度合并嵌套对象、TypeScript 类型安全、自动持久化到 localStorage、订阅变化自动更新。",
+    href: "/demos/config-center",
+    icon: "⚙️",
+    tags: ["配置管理", "分层覆盖", "热更新", "持久化"],
+    difficulty: 2,
+    status: "ready",
+    gradient: "from-amber-500/20 via-yellow-500/10 to-transparent",
+    pattern: "pipeline",
+  },
+  {
+    id: "cache-manager",
+    title: "缓存管理器",
+    subtitle: "LRU + TTL + Tag + 自动淘汰",
+    description:
+      "高级缓存管理：LRU 最近最少使用淘汰、TTL 自动过期、标签批量失效、getOrSet 懒加载、命中率统计，告别手动清理缓存。",
+    href: "/demos/cache-manager",
+    icon: "📦",
+    tags: ["LRU", "TTL", "缓存", "性能优化"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-teal-500/20 via-green-500/10 to-transparent",
+    pattern: "price",
+  },
+  // ==================== 网络层 ====================
+  {
+    id: "websocket-manager",
+    title: "WebSocket 管理器",
+    subtitle: "自动重连 + 心跳 + 订阅管理",
+    description:
+      "WebSocket 连接管理：断线自动重连（指数退避）、心跳检测保活、频道订阅/取消、离线消息队列、重连后自动重新订阅，适用于实时行情推送。",
+    href: "/demos/websocket-manager",
+    icon: "🔌",
+    tags: ["WebSocket", "实时通信", "重连", "心跳"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-blue-500/20 via-indigo-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  {
+    id: "request-layer",
+    title: "请求层",
+    subtitle: "拦截器 + 重试 + 缓存 + 并发控制",
+    description:
+      "统一 HTTP 请求管理：请求/响应/错误拦截器、失败自动重试、响应缓存、AbortController 取消、并发限制排队，告别重复的请求处理代码。",
+    href: "/demos/request-layer",
+    icon: "🌐",
+    tags: ["HTTP", "拦截器", "重试", "缓存"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-sky-500/20 via-cyan-500/10 to-transparent",
+    pattern: "pipeline",
+  },
+  // ==================== 原有 Demo ====================
   {
     id: "plugin-host",
     title: "VS Code 级插件系统",

@@ -47,5 +47,6 @@ test
 prompt
 
 server.log
+nul
 # Skills directory
 /skills/

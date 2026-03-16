@@ -1,9 +1,19 @@
-import type {
-  Action,
-  ActionResult,
-  AppState,
-  CanvasElement,
-} from "../types";
+import React from "react";
+import type { Action, ActionResult, AppState, CanvasElement } from "../types";
+
+// ==================== HistoryState ====================
+
+/**
+ * HistoryState —— ActionManager 感知历史栈状态的接口
+ *
+ * ActionManager 不直接依赖 HistoryManager，而是通过注入的
+ * getHistoryState getter 来查询 canUndo / canRedo，
+ * 保持 ActionManager 与 HistoryManager 的解耦。
+ */
+export interface HistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+}
 
 /**
  * ActionManager —— 命令管理器（对标 Excalidraw 的 ActionManager）
@@ -14,12 +24,16 @@ import type {
  * - handleKeyDown — 快捷键自动分发，按 keyPriority 排序
  * - renderAction — 每个 Action 可自带 PanelComponent（二级工具条）
  * - updater — 单一状态更新通道，所有 Action 的结果汇入同一出口
+ * - getHistoryState — 注入的 getter，用于查询 canUndo / canRedo
+ *   ActionManager 不直接依赖 HistoryManager，保持解耦
  */
 export class ActionManager {
   private actions: Map<string, Action> = new Map();
   private updater: (result: ActionResult) => void;
   private getAppState: () => Readonly<AppState>;
   private getElements: () => readonly CanvasElement[];
+  /** 注入的历史状态 getter，默认返回全 false（不可撤销/重做） */
+  private getHistoryState: () => HistoryState = () => ({ canUndo: false, canRedo: false });
 
   constructor(
     updater: (result: ActionResult) => void,
@@ -38,9 +52,7 @@ export class ActionManager {
    */
   registerAction(action: Action): void {
     if (this.actions.has(action.name)) {
-      console.warn(
-        `[ActionManager] Action "${action.name}" is already registered, overwriting.`,
-      );
+      console.warn(`[ActionManager] Action "${action.name}" is already registered, overwriting.`);
     }
     this.actions.set(action.name, action);
   }
@@ -84,17 +96,11 @@ export class ActionManager {
    * @param formData 来自 PanelComponent 或外部调用的附加数据
    * @returns 执行结果，如果 Action 不存在或 predicate 不通过则返回 null
    */
-  executeAction(
-    action: Action | string,
-    formData?: unknown,
-  ): ActionResult | null {
-    const resolved =
-      typeof action === "string" ? this.actions.get(action) : action;
+  executeAction(action: Action | string, formData?: unknown): ActionResult | null {
+    const resolved = typeof action === "string" ? this.actions.get(action) : action;
 
     if (!resolved) {
-      console.warn(
-        `[ActionManager] Action "${action}" not found.`,
-      );
+      console.warn(`[ActionManager] Action "${action}" not found.`);
       return null;
     }
 
@@ -143,9 +149,7 @@ export class ActionManager {
         }
         return true;
       })
-      .sort(
-        (a, b) => (b.keyPriority ?? 0) - (a.keyPriority ?? 0),
-      );
+      .sort((a, b) => (b.keyPriority ?? 0) - (a.keyPriority ?? 0));
 
     if (matching.length === 0) {
       return false;
@@ -167,15 +171,18 @@ export class ActionManager {
   // ==================== UI 渲染 ====================
 
   /**
-   * 渲染 Action 的 PanelComponent（二级工具条）
+   * 渲染 Action 的 PanelComponent
    *
-   * 每个 Action 可以通过 PanelComponent 自带 UI，
-   * 例如颜色选择器、粗细选择器等。
+   * 对标 Excalidraw 的 ActionManager.renderAction：
+   * - 每个 Action 通过 PanelComponent 自带 UI（按钮、颜色选择器等）
+   * - Toolbar 只负责布局摆放，不硬编码任何业务逻辑
+   * - extraProps 用于注入上下文（如 isEnabled），由调用方按需传入
    *
    * @param name Action 名称
+   * @param extraProps 额外注入到 PanelComponent 的 props（如 { isEnabled: false }）
    * @returns React 元素，或 null
    */
-  renderAction(name: string): React.ReactElement | null {
+  renderAction(name: string, extraProps?: Record<string, unknown>): React.ReactElement | null {
     const action = this.actions.get(name);
     if (!action?.PanelComponent) {
       return null;
@@ -185,30 +192,54 @@ export class ActionManager {
     const appState = this.getAppState();
     const PanelComponent = action.PanelComponent;
 
-    // 使用 React.createElement 避免 JSX 依赖
-    // 调用方在 React 组件中使用时可直接渲染返回值
     const updateData = (formData: unknown) => {
+      // 特殊处理：toggleTranslate 的语言切换附带 __changeLang 指令
+      if (
+        formData !== null &&
+        typeof formData === "object" &&
+        "__changeLang" in (formData as object)
+      ) {
+        const changeLangAction = this.actions.get("changeTranslateTargetLang");
+        if (changeLangAction) {
+          const langResult = changeLangAction.perform(elements, appState, {
+            lang: (formData as { __changeLang: string }).__changeLang,
+          });
+          if (langResult) this.updater(langResult);
+        }
+        return;
+      }
+
       const result = action.perform(elements, appState, formData);
       if (result) {
         this.updater(result);
       }
     };
 
-    // 返回一个可被 React 渲染的元素描述
-    // 注意：这里不 import React，由调用方确保 React 环境
-    return {
-      type: PanelComponent,
-      props: { elements, appState, updateData, key: name },
+    return React.createElement(PanelComponent, {
+      elements,
+      appState,
+      updateData,
       key: name,
-    } as unknown as React.ReactElement;
+      ...extraProps,
+    });
   }
 
   /**
    * 检查指定 Action 在当前上下文中是否可用
+   *
+   * 对 undo / redo 特殊处理：
+   * 这两个 Action 没有 predicate（因为 predicate 拿不到 HistoryManager），
+   * 而是通过 getHistoryState getter 来判断是否可用。
+   * 其他 Action 走标准的 predicate 逻辑。
    */
   isActionEnabled(name: string): boolean {
     const action = this.actions.get(name);
     if (!action) return false;
+
+    // undo / redo 特殊处理：从注入的 getter 读取历史栈状态
+    if (name === "undo") return this.getHistoryState().canUndo;
+    if (name === "redo") return this.getHistoryState().canRedo;
+
     if (!action.predicate) return true;
     return action.predicate(this.getElements(), this.getAppState());
   }
@@ -229,5 +260,21 @@ export class ActionManager {
   ): void {
     this.getAppState = getAppState;
     this.getElements = getElements;
+  }
+
+  /**
+   * 注入历史状态 getter
+   *
+   * 由 page.tsx 在 ActionManager 初始化后调用：
+   *   actionManager.setHistoryStateGetter(() => ({
+   *     canUndo: historyManager.canUndo(),
+   *     canRedo: historyManager.canRedo(),
+   *   }));
+   *
+   * 这样 isActionEnabled("undo") / isActionEnabled("redo") 就能
+   * 返回真实的可用状态，MainToolbar 不再需要从外部传 canUndo / canRedo。
+   */
+  setHistoryStateGetter(getter: () => HistoryState): void {
+    this.getHistoryState = getter;
   }
 }
