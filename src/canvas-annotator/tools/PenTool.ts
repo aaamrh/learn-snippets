@@ -7,6 +7,7 @@ import type {
   PenElement,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { createPenElement } from "../elements/factory";
 import { BaseTool } from "./BaseTool";
 
@@ -116,7 +117,7 @@ export class PenTool extends BaseTool {
     return {
       elements: newElements,
       appState: { isDrawing: false },
-      captureHistory: true, // 完成绘制，记入 undo 历史
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY, // 完成绘制，记入 undo 历史
     };
   }
 

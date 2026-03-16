@@ -6,6 +6,7 @@ import type {
   CanvasElement,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { hitTest } from "../elements/hitTest";
 import { markElementDeleted } from "../elements/factory";
 import { BaseTool } from "./BaseTool";
@@ -105,7 +106,7 @@ export class EraserTool extends BaseTool {
       elements: finalElements,
       appState: { isDrawing: false },
       // 只有真正擦除了元素才记入历史
-      captureHistory: hadErasure,
+      captureUpdate: hadErasure ? CaptureUpdateAction.IMMEDIATELY : CaptureUpdateAction.NEVER,
     };
   }
 

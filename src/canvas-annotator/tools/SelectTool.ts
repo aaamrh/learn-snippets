@@ -7,6 +7,7 @@ import type {
   HandlePosition,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { hitTest } from "../elements/hitTest";
 import { moveElements } from "../elements/transform";
 import { resizeElement } from "../elements/transform";
@@ -230,7 +231,7 @@ export class SelectTool extends BaseTool {
         isDrawing: false,
       },
       // 只有真正发生了移动或缩放才记入历史
-      captureHistory: wasMovingOrResizing,
+      captureUpdate: wasMovingOrResizing ? CaptureUpdateAction.IMMEDIATELY : CaptureUpdateAction.NEVER,
     };
   }
 

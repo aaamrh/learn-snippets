@@ -7,6 +7,7 @@ import type {
   RectElement,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { createRectElement } from "../elements/factory";
 import { BaseTool } from "./BaseTool";
 
@@ -140,7 +141,7 @@ export class RectTool extends BaseTool {
     return {
       elements: newElements,
       appState: { isDrawing: false },
-      captureHistory: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   }
 

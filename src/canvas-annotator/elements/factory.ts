@@ -190,17 +190,6 @@ export function updateElement<T extends CanvasElement>(
 }
 
 /**
- * 在元素数组中替换指定 ID 的元素（不可变）
- */
-export function replaceElement(
-  elements: readonly CanvasElement[],
-  id: string,
-  updater: (el: CanvasElement) => CanvasElement,
-): CanvasElement[] {
-  return elements.map((el) => (el.id === id ? updater(el) : el));
-}
-
-/**
  * 在元素数组中标记指定 ID 的元素为已删除（不可变）
  */
 export function markElementDeleted(
@@ -212,11 +201,3 @@ export function markElementDeleted(
   );
 }
 
-/**
- * 过滤出可见元素（未删除的）
- */
-export function getVisibleElements(
-  elements: readonly CanvasElement[],
-): CanvasElement[] {
-  return elements.filter((el) => !el.isDeleted);
-}

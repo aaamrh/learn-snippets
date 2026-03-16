@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo, useEffect, type RefObject } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect, useReducer } from "react";
 import type { AppState, CanvasElement, ToolType, ActionResult } from "@/canvas-annotator/types";
-import { createDefaultAppState } from "@/canvas-annotator/types";
+import { createDefaultAppState, CaptureUpdateAction } from "@/canvas-annotator/types";
 import { HistoryManager } from "@/canvas-annotator/actions/HistoryManager";
+import { Store } from "@/canvas-annotator/store/Store";
 import { ActionManager } from "@/canvas-annotator/actions/ActionManager";
 import { ALL_ACTIONS, pasteElementsAction } from "@/canvas-annotator/actions/actions";
 import { ToolRegistry } from "@/canvas-annotator/tools/ToolRegistry";
+import { Scene } from "@/canvas-annotator/scene/Scene";
 import { MainToolbar } from "@/canvas-annotator/components/MainToolbar";
 import { SecondaryToolbar } from "@/canvas-annotator/components/SecondaryToolbar";
 import { AnnotatorCanvas } from "@/canvas-annotator/components/AnnotatorCanvas";
@@ -31,19 +33,18 @@ import { TranslatePopover } from "@/canvas-annotator/components/TranslateModal";
 export default function CanvasAnnotatorPage() {
   // ==================== 核心状态 ====================
 
-  const [elements, setElements] = useState<readonly CanvasElement[]>([]);
   const [appState, setAppState] = useState<AppState>(createDefaultAppState);
+
+  // Scene 管理元素集合：O(1) ID 查找 + nonce 缓存失效
+  const scene = useMemo(() => new Scene(), []);
+  // forceUpdate 触发 React 重渲染（Scene 是 mutable 单例，不走 useState）
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
 
   // 翻译 Popover 锚点：挂在工具栏容器上，TranslatePopover 据此定位
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // 用 ref 保存最新状态，避免闭包陷阱
-  const elementsRef = useRef(elements);
+  // 用 ref 保存最新 appState，避免闭包陷阱
   const appStateRef = useRef(appState);
-
-  useEffect(() => {
-    elementsRef.current = elements;
-  }, [elements]);
 
   useEffect(() => {
     appStateRef.current = appState;
@@ -53,6 +54,15 @@ export default function CanvasAnnotatorPage() {
 
   const historyManager = useMemo(() => new HistoryManager(), []);
   const toolRegistry = useMemo(() => new ToolRegistry(), []);
+  const store = useMemo(() => new Store(), []);
+
+  // Store 清理：卸载时刷入 pending 的 EVENTUALLY 快照并销毁定时器
+  useEffect(() => {
+    return () => {
+      store.flushPending(historyManager);
+      store.destroy();
+    };
+  }, [store, historyManager]);
 
   // ==================== 统一状态更新管道 ====================
 
@@ -60,153 +70,113 @@ export default function CanvasAnnotatorPage() {
    * updater —— 所有状态变更的统一入口
    *
    * 对标 Excalidraw 的 ActionManager.updater：
-   * - 接收 ActionResult（elements + appState + captureHistory）
-   * - 如果 captureHistory 为 true，先将当前状态压入 undo 栈
+   * - 接收 ActionResult（elements + appState + captureUpdate + sideEffect）
+   * - 通过 sideEffect 声明式处理副作用（undo/redo/剪贴板）
+   * - 通过 Store 调度 CaptureUpdateAction（IMMEDIATELY/EVENTUALLY/NEVER）
    * - 然后应用新的 elements 和 appState
-   * - 特殊处理 undo/redo 请求标记
    */
   const updater = useCallback(
     (result: ActionResult) => {
-      const currentElements = elementsRef.current;
+      const currentElements = scene.getElements();
       const currentAppState = appStateRef.current;
 
-      // 特殊处理：undo 请求
-      if (result.appState && "_undoRequested" in result.appState) {
-        const snapshot = historyManager.undo({
-          elements: currentElements,
-          appState: {
-            activeTool: currentAppState.activeTool,
-            currentStrokeColor: currentAppState.currentStrokeColor,
-            currentFillColor: currentAppState.currentFillColor,
-            currentStrokeWidth: currentAppState.currentStrokeWidth,
-            currentFontSize: currentAppState.currentFontSize,
-            currentOpacity: currentAppState.currentOpacity,
-          },
-        });
+      /** 从当前状态创建历史快照（提取公共逻辑，减少重复） */
+      const createHistoryEntry = () => ({
+        elements: currentElements,
+        appState: {
+          activeTool: currentAppState.activeTool,
+          currentStrokeColor: currentAppState.currentStrokeColor,
+          currentFillColor: currentAppState.currentFillColor,
+          currentStrokeWidth: currentAppState.currentStrokeWidth,
+          currentFontSize: currentAppState.currentFontSize,
+          currentOpacity: currentAppState.currentOpacity,
+        },
+      });
 
-        if (snapshot) {
-          setElements(snapshot.elements);
-          setAppState((prev) => ({ ...prev, ...snapshot.appState }));
-        }
-        return;
-      }
-
-      // 特殊处理：redo 请求
-      if (result.appState && "_redoRequested" in result.appState) {
-        const snapshot = historyManager.redo({
-          elements: currentElements,
-          appState: {
-            activeTool: currentAppState.activeTool,
-            currentStrokeColor: currentAppState.currentStrokeColor,
-            currentFillColor: currentAppState.currentFillColor,
-            currentStrokeWidth: currentAppState.currentStrokeWidth,
-            currentFontSize: currentAppState.currentFontSize,
-            currentOpacity: currentAppState.currentOpacity,
-          },
-        });
-
-        if (snapshot) {
-          setElements(snapshot.elements);
-          setAppState((prev) => ({ ...prev, ...snapshot.appState }));
-        }
-        return;
-      }
-
-      // 特殊处理：剪贴板写入请求（复制/剪切）
-      if (result.appState && "_clipboardWrite" in result.appState) {
-        const clipboardText = (result.appState as Record<string, unknown>)._clipboardWrite as string;
-
-        // 异步写入剪贴板（不阻塞 UI）
-        navigator.clipboard.writeText(clipboardText).catch((err) => {
-          console.warn("Failed to write to clipboard:", err);
-        });
-
-        // 如果是剪切操作（有 elements 变更），需要继续处理
-        // 清理 _clipboardWrite 标记后继续走正常流程
-        const cleanResult = {
-          ...result,
-          appState: { ...result.appState },
-        };
-        delete (cleanResult.appState as Record<string, unknown>)["_clipboardWrite"];
-
-        // 如果只是复制（没有 elements 变更），直接返回
-        if (!result.elements) {
-          return;
-        }
-
-        // 剪切操作：继续处理元素删除
-        result = cleanResult;
-      }
-
-      // 特殊处理：剪贴板读取请求（粘贴）
-      if (result.appState && "_clipboardReadRequested" in result.appState) {
-        // 异步读取剪贴板并应用粘贴
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            const pasteResult = pasteElementsAction.applyPaste(
-              elementsRef.current,
-              appStateRef.current,
-              text,
-            );
-
-            if (pasteResult) {
-              // 粘贴操作需要记入历史
-              historyManager.push({
-                elements: elementsRef.current,
-                appState: {
-                  activeTool: appStateRef.current.activeTool,
-                  currentStrokeColor: appStateRef.current.currentStrokeColor,
-                  currentFillColor: appStateRef.current.currentFillColor,
-                  currentStrokeWidth: appStateRef.current.currentStrokeWidth,
-                  currentFontSize: appStateRef.current.currentFontSize,
-                  currentOpacity: appStateRef.current.currentOpacity,
-                },
-              });
-
-              setElements(pasteResult.elements);
-              setAppState((prev) => ({ ...prev, ...pasteResult.appState }));
+      // 处理声明式副作用（类型安全的 discriminated union）
+      if (result.sideEffect) {
+        switch (result.sideEffect.type) {
+          case "requestUndo": {
+            const snapshot = historyManager.undo(createHistoryEntry());
+            if (snapshot) {
+              scene.replaceElements(snapshot.elements);
+              forceUpdate();
+              setAppState((prev) => ({ ...prev, ...snapshot.appState }));
             }
-          })
-          .catch((err) => {
-            console.warn("Failed to read from clipboard:", err);
-          });
+            return;
+          }
+          case "requestRedo": {
+            const snapshot = historyManager.redo(createHistoryEntry());
+            if (snapshot) {
+              scene.replaceElements(snapshot.elements);
+              forceUpdate();
+              setAppState((prev) => ({ ...prev, ...snapshot.appState }));
+            }
+            return;
+          }
+          case "clipboardWrite": {
+            navigator.clipboard.writeText(result.sideEffect.text).catch((err) => {
+              console.warn("Failed to write to clipboard:", err);
+            });
+            // 纯复制（没有 elements 变更）直接返回
+            // 剪切操作（有 elements）继续走下方正常流程
+            if (!result.elements) {
+              return;
+            }
+            break;
+          }
+          case "clipboardReadAndPaste": {
+            navigator.clipboard
+              .readText()
+              .then((text) => {
+                const pasteResult = pasteElementsAction.onAsyncComplete?.(
+                  scene.getElements(),
+                  appStateRef.current,
+                  text,
+                );
 
-        return;
+                if (pasteResult) {
+                  // 粘贴操作需要记入历史
+                  historyManager.push({
+                    elements: scene.getElements(),
+                    appState: {
+                      activeTool: appStateRef.current.activeTool,
+                      currentStrokeColor: appStateRef.current.currentStrokeColor,
+                      currentFillColor: appStateRef.current.currentFillColor,
+                      currentStrokeWidth: appStateRef.current.currentStrokeWidth,
+                      currentFontSize: appStateRef.current.currentFontSize,
+                      currentOpacity: appStateRef.current.currentOpacity,
+                    },
+                  });
+
+                  scene.replaceElements(pasteResult.elements);
+                  forceUpdate();
+                  setAppState((prev) => ({ ...prev, ...pasteResult.appState }));
+                }
+              })
+              .catch((err) => {
+                console.warn("Failed to read from clipboard:", err);
+              });
+            return;
+          }
+        }
       }
 
-      // 如果需要记入历史，先保存当前快照
-      if (result.captureHistory) {
-        historyManager.push({
-          elements: currentElements,
-          appState: {
-            activeTool: currentAppState.activeTool,
-            currentStrokeColor: currentAppState.currentStrokeColor,
-            currentFillColor: currentAppState.currentFillColor,
-            currentStrokeWidth: currentAppState.currentStrokeWidth,
-            currentFontSize: currentAppState.currentFontSize,
-            currentOpacity: currentAppState.currentOpacity,
-          },
-        });
-      }
+      // 通过 Store 调度历史捕获（IMMEDIATELY/EVENTUALLY/NEVER）
+      store.scheduleCaptureUpdate(result.captureUpdate);
+      store.flush(historyManager, createHistoryEntry());
 
       // 应用新状态
       if (result.elements !== undefined) {
-        setElements(result.elements ?? []);
+        scene.replaceElements(result.elements ?? []);
+        forceUpdate();
       }
 
       if (result.appState) {
-        // 过滤掉内部标记字段
-        const cleanState = { ...result.appState };
-        delete (cleanState as Record<string, unknown>)["_undoRequested"];
-        delete (cleanState as Record<string, unknown>)["_redoRequested"];
-        delete (cleanState as Record<string, unknown>)["_clipboardWrite"];
-        delete (cleanState as Record<string, unknown>)["_clipboardReadRequested"];
-
-        setAppState((prev) => ({ ...prev, ...cleanState }));
+        setAppState((prev) => ({ ...prev, ...result.appState }));
       }
     },
-    [historyManager],
+    [historyManager, scene, store],
   );
 
   // ==================== ActionManager ====================
@@ -215,20 +185,20 @@ export default function CanvasAnnotatorPage() {
     const mgr = new ActionManager(
       updater,
       () => appStateRef.current,
-      () => elementsRef.current,
+      () => scene.getElements(),
     );
     mgr.registerAll(ALL_ACTIONS);
     return mgr;
-  }, [updater]);
+  }, [updater, scene]);
 
   // 保持 ActionManager 的 updater 和 getter 引用最新
   useEffect(() => {
     actionManager.setUpdater(updater);
     actionManager.setGetters(
       () => appStateRef.current,
-      () => elementsRef.current,
+      () => scene.getElements(),
     );
-  }, [actionManager, updater]);
+  }, [actionManager, updater, scene]);
 
   // 注入历史状态 getter：让 isActionEnabled("undo"/"redo") 能返回真实状态
   // ActionManager 不直接依赖 HistoryManager，通过 getter 解耦
@@ -306,12 +276,12 @@ export default function CanvasAnnotatorPage() {
     (update: {
       elements?: readonly CanvasElement[];
       appState?: Partial<AppState>;
-      captureHistory?: boolean;
+      captureUpdate?: CaptureUpdateAction;
     }) => {
       updater({
         elements: update.elements,
         appState: update.appState,
-        captureHistory: update.captureHistory ?? false,
+        captureUpdate: update.captureUpdate ?? CaptureUpdateAction.NEVER,
       });
     },
     [updater],
@@ -326,7 +296,7 @@ export default function CanvasAnnotatorPage() {
   const handleTranslateClose = useCallback(() => {
     updater({
       appState: { openDialog: null },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     });
   }, [updater]);
 
@@ -337,7 +307,7 @@ export default function CanvasAnnotatorPage() {
 
   // ==================== 统计信息 ====================
 
-  const visibleElementCount = elements.filter((el) => !el.isDeleted).length;
+  const visibleElementCount = scene.getVisibleElements().length;
 
   // ==================== 渲染 ====================
 
@@ -370,7 +340,7 @@ export default function CanvasAnnotatorPage() {
       {/* ==================== 画布区域 ==================== */}
       <div className="flex-1 relative overflow-hidden mx-4 mb-4 rounded-xl border border-gray-700/50">
         <AnnotatorCanvas
-          elements={elements}
+          elements={scene.getElements()}
           appState={appState}
           toolRegistry={toolRegistry}
           onUpdate={handleCanvasUpdate}

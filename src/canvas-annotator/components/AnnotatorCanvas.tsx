@@ -7,8 +7,8 @@ import React, {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { AppState, CanvasElement, ToolType, Point } from "../types";
-import { renderScene } from "../elements/renderer";
+import type { AppState, CanvasElement, Point, CaptureUpdateAction } from "../types";
+import { renderStaticScene, renderInteractiveScene } from "../elements/renderer";
 import { screenToScene } from "../elements/hitTest";
 import type { ToolRegistry } from "../tools/ToolRegistry";
 import type { TextTool } from "../tools/TextTool";
@@ -26,7 +26,7 @@ interface AnnotatorCanvasProps {
   onUpdate: (update: {
     elements?: readonly CanvasElement[];
     appState?: Partial<AppState>;
-    captureHistory?: boolean;
+    captureUpdate?: CaptureUpdateAction;
   }) => void;
   /** 画布宽度（默认 100%） */
   width?: number;
@@ -71,7 +71,9 @@ const INITIAL_TEXT_INPUT: TextInputState = {
  * - Canvas 组件不持有 elements/appState，完全由父组件控制（受控组件模式）
  * - 指针事件被转换为场景坐标后转发给 activeTool
  * - activeTool 返回 ToolResult，Canvas 组件通过 onUpdate 回调通知父组件
- * - 渲染由 useEffect 驱动，每当 elements/appState 变化时重绘
+ * - 双画布架构：StaticCanvas（底层，元素渲染）+ InteractiveCanvas（顶层，选中框/手柄）
+ * - StaticCanvas 仅在 elements 变化时重绘；InteractiveCanvas 在 selectedElementIds 变化时重绘
+ * - 指针事件仅绑定在 InteractiveCanvas 上（顶层接收交互）
  */
 export function AnnotatorCanvas({
   elements,
@@ -83,7 +85,8 @@ export function AnnotatorCanvas({
 }: AnnotatorCanvasProps) {
   // ==================== Refs ====================
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const staticCanvasRef = useRef<HTMLCanvasElement>(null);
+  const interactiveCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [textInput, setTextInput] = useState<TextInputState>(INITIAL_TEXT_INPUT);
@@ -133,40 +136,57 @@ export function AnnotatorCanvas({
   // ==================== 高 DPI 适配 ====================
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvasSize.width * dpr;
-    canvas.height = canvasSize.height * dpr;
-    canvas.style.width = `${canvasSize.width}px`;
-    canvas.style.height = `${canvasSize.height}px`;
 
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(dpr, dpr);
+    // 设置两个 canvas 的高 DPI
+    for (const canvas of [staticCanvasRef.current, interactiveCanvasRef.current]) {
+      if (!canvas) continue;
+      canvas.width = canvasSize.width * dpr;
+      canvas.height = canvasSize.height * dpr;
+      canvas.style.width = `${canvasSize.width}px`;
+      canvas.style.height = `${canvasSize.height}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
     }
   }, [canvasSize]);
 
-  // ==================== 渲染 ====================
+  // ==================== 静态画布渲染（元素） ====================
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = staticCanvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 保存当前变换，因为高 DPI 缩放已经应用
     ctx.save();
 
     // 获取当前工具的 wip 元素用于实时预览
     const wipElement = toolRegistry.getActiveWipElement(appState);
 
-    renderScene(ctx, elements, appState, wipElement);
+    renderStaticScene(ctx, elements, appState, wipElement);
 
     ctx.restore();
   }, [elements, appState, toolRegistry]);
+
+  // ==================== 交互画布渲染（选中框/手柄） ====================
+
+  useEffect(() => {
+    const canvas = interactiveCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.save();
+
+    renderInteractiveScene(ctx, elements, appState);
+
+    ctx.restore();
+  }, [elements, appState]);
 
   // ==================== 坐标转换 ====================
 
@@ -175,7 +195,7 @@ export function AnnotatorCanvas({
    */
   const getScenePoint = useCallback(
     (e: ReactPointerEvent<HTMLCanvasElement>): Point => {
-      const canvas = canvasRef.current;
+      const canvas = interactiveCanvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
 
       const rect = canvas.getBoundingClientRect();
@@ -253,7 +273,7 @@ export function AnnotatorCanvas({
       onUpdate({
         elements: result.elements,
         appState: result.appState,
-        captureHistory: result.captureHistory,
+        captureUpdate: result.captureUpdate,
       });
     }
 
@@ -286,7 +306,7 @@ export function AnnotatorCanvas({
       if (!tool) return;
 
       // 捕获指针（确保拖拽时不会丢失 move/up 事件）
-      const canvas = canvasRef.current;
+      const canvas = interactiveCanvasRef.current;
       if (canvas) {
         canvas.setPointerCapture(e.pointerId);
       }
@@ -301,7 +321,7 @@ export function AnnotatorCanvas({
         onUpdate({
           elements: result.elements,
           appState: result.appState,
-          captureHistory: result.captureHistory,
+          captureUpdate: result.captureUpdate,
         });
       }
     },
@@ -324,7 +344,7 @@ export function AnnotatorCanvas({
         onUpdate({
           elements: result.elements,
           appState: result.appState,
-          captureHistory: result.captureHistory,
+          captureUpdate: result.captureUpdate,
         });
       }
     },
@@ -338,7 +358,7 @@ export function AnnotatorCanvas({
       if (!tool) return;
 
       // 释放指针捕获
-      const canvas = canvasRef.current;
+      const canvas = interactiveCanvasRef.current;
       if (canvas) {
         try {
           canvas.releasePointerCapture(e.pointerId);
@@ -357,7 +377,7 @@ export function AnnotatorCanvas({
         onUpdate({
           elements: result.elements,
           appState: result.appState,
-          captureHistory: result.captureHistory,
+          captureUpdate: result.captureUpdate,
         });
       }
 
@@ -442,10 +462,21 @@ export function AnnotatorCanvas({
           : undefined
       }
     >
-      {/* 画布 */}
+      {/* 底层：静态画布 — 元素渲染（棋盘格 + 所有元素 + wip 预览） */}
       <canvas
-        ref={canvasRef}
-        className="block touch-none"
+        ref={staticCanvasRef}
+        className="absolute inset-0 block"
+        style={{
+          width: `${canvasSize.width}px`,
+          height: `${canvasSize.height}px`,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* 顶层：交互画布 — 选中框、缩放手柄（接收指针事件） */}
+      <canvas
+        ref={interactiveCanvasRef}
+        className="absolute inset-0 block touch-none"
         style={{
           cursor: appState.cursorType || "crosshair",
           width: `${canvasSize.width}px`,

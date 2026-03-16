@@ -7,6 +7,7 @@ import type {
   TextElement,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { createTextElement } from "../elements/factory";
 import { BaseTool } from "./BaseTool";
 
@@ -138,7 +139,7 @@ export class TextTool extends BaseTool {
     return {
       elements: newElements,
       appState: { isDrawing: false },
-      captureHistory: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   }
 

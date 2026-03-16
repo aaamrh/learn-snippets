@@ -135,13 +135,56 @@ export interface Action {
   keyPriority?: number;
   /** Action 自带的面板组件（用于二级工具条） */
   PanelComponent?: FC<ActionPanelProps>;
+  /**
+   * 异步副作用完成后的回调（如剪贴板读取完成后应用粘贴）
+   * 替代原先挂在 Action 实例上的 ad-hoc 方法
+   */
+  onAsyncComplete?: (
+    elements: readonly CanvasElement[],
+    appState: Readonly<AppState>,
+    data: string,
+  ) => { elements: readonly CanvasElement[]; appState: Partial<AppState> } | null;
+}
+
+// ==================== ActionSideEffect ====================
+
+/**
+ * Action 副作用 —— 类型安全的 discriminated union
+ *
+ * 替代原先的魔法标记模式（_undoRequested / _clipboardWrite 等）：
+ * - 旧方案：用 `as unknown as Partial<AppState>` 强制注入非 AppState 字段
+ * - 新方案：通过 sideEffect 字段声明意图，updater 通过 switch/case 分发
+ *
+ * 对标 Excalidraw 的副作用处理模式
+ */
+export type ActionSideEffect =
+  | { type: "requestUndo" }
+  | { type: "requestRedo" }
+  | { type: "clipboardWrite"; text: string }
+  | { type: "clipboardReadAndPaste" };
+
+// ==================== CaptureUpdateAction ====================
+
+/**
+ * 三级历史捕获语义（对标 Excalidraw 的 CaptureUpdateAction）
+ *
+ * - IMMEDIATELY — 立即入 undo 栈（完成绘制、删除、属性修改等）
+ * - EVENTUALLY — 延迟合并入栈（拖拽中间状态、连续滑块调整）
+ * - NEVER — 不入栈（光标移动、hover 高亮等瞬态 UI 变化）
+ */
+export enum CaptureUpdateAction {
+  IMMEDIATELY = "immediately",
+  EVENTUALLY = "eventually",
+  NEVER = "never",
 }
 
 export interface ActionResult {
   elements?: readonly CanvasElement[];
   appState?: Partial<AppState>;
-  /** 是否记入 undo 历史 */
-  captureHistory: boolean;
+  /** 历史捕获语义：IMMEDIATELY / EVENTUALLY / NEVER */
+  captureUpdate: CaptureUpdateAction;
+  /** 声明式副作用，由 updater 执行 */
+  sideEffect?: ActionSideEffect;
 }
 
 // ==================== Tool（Strategy 模式） ====================
@@ -183,8 +226,8 @@ export interface Tool {
 export interface ToolResult {
   elements?: readonly CanvasElement[];
   appState?: Partial<AppState>;
-  /** 是否记入 undo 历史（默认 false，仅 pointerUp 完成绘制时设为 true） */
-  captureHistory?: boolean;
+  /** 历史捕获语义（默认 NEVER，仅 pointerUp 完成绘制时设为 IMMEDIATELY） */
+  captureUpdate?: CaptureUpdateAction;
 }
 
 // ==================== 属性面板配置 ====================

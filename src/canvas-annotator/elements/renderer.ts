@@ -12,15 +12,14 @@ import type {
 // ==================== 主渲染函数 ====================
 
 /**
- * 将所有可见元素渲染到 Canvas 2D context
+ * renderStaticScene —— 渲染所有元素到 StaticCanvas
  *
- * 设计要点：
- * - 遍历 elements 数组，跳过 isDeleted 的元素
- * - 根据元素 type 分发到对应的渲染函数
- * - 选中的元素绘制选中框和缩放手柄
- * - 考虑视口偏移（scrollX/scrollY）和缩放（zoom）
+ * 包含：棋盘格背景 + 遍历元素 + wipElement 预览
+ * 仅当 Scene.nonce 变化时调用（元素增删改时）
+ *
+ * 对标 Excalidraw renderStaticScene
  */
-export function renderScene(
+export function renderStaticScene(
   ctx: CanvasRenderingContext2D,
   elements: readonly CanvasElement[],
   appState: Readonly<AppState>,
@@ -51,7 +50,61 @@ export function renderScene(
     renderElement(ctx, wipElement);
   }
 
+  ctx.restore();
+}
+
+/**
+ * renderInteractiveScene —— 渲染交互 UI 到 InteractiveCanvas
+ *
+ * 包含：选中框 + 缩放手柄
+ * 每次 selectedElementIds 变化或指针移动时调用
+ *
+ * 对标 Excalidraw renderInteractiveScene
+ */
+export function renderInteractiveScene(
+  ctx: CanvasRenderingContext2D,
+  elements: readonly CanvasElement[],
+  appState: Readonly<AppState>,
+): void {
+  const { width, height } = ctx.canvas;
+
+  // 清空交互画布
+  ctx.clearRect(0, 0, width, height);
+
+  // 应用视口变换
+  ctx.save();
+  ctx.translate(appState.scrollX, appState.scrollY);
+  ctx.scale(appState.zoom, appState.zoom);
+
   // 绘制选中元素的选中框
+  for (const element of elements) {
+    if (element.isDeleted) continue;
+    if (appState.selectedElementIds.has(element.id)) {
+      renderSelectionBox(ctx, element);
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * renderScene —— 兼容函数：将 static + interactive 渲染到同一个 canvas
+ *
+ * 保留供单画布场景使用（如导出、缩略图等）
+ */
+export function renderScene(
+  ctx: CanvasRenderingContext2D,
+  elements: readonly CanvasElement[],
+  appState: Readonly<AppState>,
+  wipElement?: CanvasElement | null,
+): void {
+  renderStaticScene(ctx, elements, appState, wipElement);
+
+  // 在同一个 canvas 上叠加交互 UI
+  ctx.save();
+  ctx.translate(appState.scrollX, appState.scrollY);
+  ctx.scale(appState.zoom, appState.zoom);
+
   for (const element of elements) {
     if (element.isDeleted) continue;
     if (appState.selectedElementIds.has(element.id)) {

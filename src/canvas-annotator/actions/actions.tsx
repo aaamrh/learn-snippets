@@ -1,4 +1,5 @@
 import React from "react";
+import { CaptureUpdateAction } from "../types";
 import type { Action, ActionPanelProps, CanvasElement, AppState } from "../types";
 
 // ==================== changeColor ====================
@@ -27,14 +28,14 @@ export const changeStrokeColorAction: Action = {
       return {
         elements: newElements,
         appState: { currentStrokeColor: color },
-        captureHistory: true,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       };
     }
 
     // 没有选中元素，仅修改当前绘制颜色
     return {
       appState: { currentStrokeColor: color },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -62,13 +63,13 @@ export const changeFillColorAction: Action = {
       return {
         elements: newElements,
         appState: { currentFillColor: color },
-        captureHistory: true,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       };
     }
 
     return {
       appState: { currentFillColor: color },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -96,13 +97,13 @@ export const changeStrokeWidthAction: Action = {
       return {
         elements: newElements,
         appState: { currentStrokeWidth: width },
-        captureHistory: true,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       };
     }
 
     return {
       appState: { currentStrokeWidth: width },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -132,13 +133,13 @@ export const changeFontSizeAction: Action = {
       return {
         elements: newElements,
         appState: { currentFontSize: fontSize },
-        captureHistory: true,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       };
     }
 
     return {
       appState: { currentFontSize: fontSize },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -166,13 +167,13 @@ export const changeOpacityAction: Action = {
       return {
         elements: newElements,
         appState: { currentOpacity: opacity },
-        captureHistory: true,
+        captureUpdate: CaptureUpdateAction.EVENTUALLY,
       };
     }
 
     return {
       appState: { currentOpacity: opacity },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -191,7 +192,7 @@ export const deleteElementsAction: Action = {
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
-      return { captureHistory: false };
+      return { captureUpdate: CaptureUpdateAction.NEVER };
     }
 
     const newElements = elements.map((el) =>
@@ -203,7 +204,7 @@ export const deleteElementsAction: Action = {
       appState: {
         selectedElementIds: new Set<string>(),
       },
-      captureHistory: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
 
@@ -237,7 +238,7 @@ export const clearCanvasAction: Action = {
     const hasVisibleElements = elements.some((el) => !el.isDeleted);
 
     if (!hasVisibleElements) {
-      return { captureHistory: false };
+      return { captureUpdate: CaptureUpdateAction.NEVER };
     }
 
     const newElements = elements.map((el) => (el.isDeleted ? el : { ...el, isDeleted: true }));
@@ -245,7 +246,7 @@ export const clearCanvasAction: Action = {
     return {
       elements: newElements,
       appState: { selectedElementIds: new Set<string>() },
-      captureHistory: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
 
@@ -253,25 +254,25 @@ export const clearCanvasAction: Action = {
     return elements.some((el) => !el.isDeleted);
   },
 
-  PanelComponent({ elements, appState, updateData }: ActionPanelProps) {
+  PanelComponent({ elements, updateData }: ActionPanelProps) {
     const enabled = elements.some((el) => !el.isDeleted);
-    return React.createElement(
-      "button",
-      {
-        type: "button",
-        title: "清空画布",
-        "aria-label": "清空画布",
-        disabled: !enabled,
-        onClick: () => updateData(null),
-        className: [
+    return (
+      <button
+        type="button"
+        title="清空画布"
+        aria-label="清空画布"
+        disabled={!enabled}
+        onClick={() => updateData(null)}
+        className={[
           "flex items-center justify-center w-9 h-9 rounded-lg",
           "text-base transition-all duration-150 select-none border border-transparent",
           enabled
             ? "text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30"
             : "text-gray-600 cursor-not-allowed opacity-50",
-        ].join(" "),
-      },
-      React.createElement("span", { className: "text-[15px] leading-none" }, "🗑"),
+        ].join(" ")}
+      >
+        <span className="text-[15px] leading-none">🗑</span>
+      </button>
     );
   },
 };
@@ -296,7 +297,7 @@ export const selectAllAction: Action = {
         selectedElementIds: visibleIds,
         activeTool: "select" as const,
       },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
@@ -314,11 +315,9 @@ export const selectAllAction: Action = {
  *
  * 快捷键：Ctrl+Z / Cmd+Z
  *
- * 注意：这个 Action 的 perform 不直接操作 HistoryManager，
- * 而是返回一个特殊标记，由 App 层的 updater 识别并调用 HistoryManager.undo()。
- *
- * 这是因为 Action.perform 是纯函数，不应该持有对 HistoryManager 的引用。
- * 实际的 undo 逻辑在 Canvas 组件的 updater 中实现。
+ * perform 不直接操作 HistoryManager，而是通过 sideEffect 声明意图，
+ * 由 App 层的 updater 识别 sideEffect.type === "requestUndo" 并调用 HistoryManager.undo()。
+ * Action.perform 保持纯函数，不持有对 HistoryManager 的引用。
  */
 export const undoAction: Action = {
   name: "undo",
@@ -327,8 +326,8 @@ export const undoAction: Action = {
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     return {
-      appState: { _undoRequested: true } as unknown as Partial<AppState>,
-      captureHistory: false,
+      sideEffect: { type: "requestUndo" },
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
@@ -339,23 +338,23 @@ export const undoAction: Action = {
   keyPriority: 100,
 
   PanelComponent({ updateData, isEnabled = true }: ActionPanelProps & { isEnabled?: boolean }) {
-    return React.createElement(
-      "button",
-      {
-        type: "button",
-        title: "撤销 (Ctrl+Z)",
-        "aria-label": "撤销",
-        disabled: !isEnabled,
-        onClick: () => updateData(null),
-        className: [
+    return (
+      <button
+        type="button"
+        title="撤销 (Ctrl+Z)"
+        aria-label="撤销"
+        disabled={!isEnabled}
+        onClick={() => updateData(null)}
+        className={[
           "flex items-center justify-center w-9 h-9 rounded-lg",
           "text-base transition-all duration-150 select-none border border-transparent",
           isEnabled
             ? "text-gray-400 hover:text-white hover:bg-gray-700/60"
             : "text-gray-600 cursor-not-allowed opacity-50",
-        ].join(" "),
-      },
-      React.createElement("span", { className: "text-[15px] leading-none" }, "↶"),
+        ].join(" ")}
+      >
+        <span className="text-[15px] leading-none">↶</span>
+      </button>
     );
   },
 };
@@ -367,7 +366,7 @@ export const undoAction: Action = {
  *
  * 快捷键：Ctrl+Shift+Z / Cmd+Shift+Z 或 Ctrl+Y / Cmd+Y
  *
- * 与 undo 同理，返回特殊标记由 updater 处理。
+ * 与 undo 同理，通过 sideEffect 声明意图由 updater 处理。
  */
 export const redoAction: Action = {
   name: "redo",
@@ -376,8 +375,8 @@ export const redoAction: Action = {
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     return {
-      appState: { _redoRequested: true } as unknown as Partial<AppState>,
-      captureHistory: false,
+      sideEffect: { type: "requestRedo" },
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
@@ -391,28 +390,26 @@ export const redoAction: Action = {
   keyPriority: 100,
 
   PanelComponent({ updateData, isEnabled = true }: ActionPanelProps & { isEnabled?: boolean }) {
-    return React.createElement(
-      "button",
-      {
-        type: "button",
-        title: "重做 (Ctrl+Y)",
-        "aria-label": "重做",
-        disabled: !isEnabled,
-        onClick: () => updateData(null),
-        className: [
+    return (
+      <button
+        type="button"
+        title="重做 (Ctrl+Y)"
+        aria-label="重做"
+        disabled={!isEnabled}
+        onClick={() => updateData(null)}
+        className={[
           "flex items-center justify-center w-9 h-9 rounded-lg",
           "text-base transition-all duration-150 select-none border border-transparent",
           isEnabled
             ? "text-gray-400 hover:text-white hover:bg-gray-700/60"
             : "text-gray-600 cursor-not-allowed opacity-50",
-        ].join(" "),
-      },
-      React.createElement("span", { className: "text-[15px] leading-none" }, "↷"),
+        ].join(" ")}
+      >
+        <span className="text-[15px] leading-none">↷</span>
+      </button>
     );
   },
 };
-
-// ==================== 导出所有 Actions ====================
 
 // ==================== toggleTranslate ====================
 
@@ -436,7 +433,7 @@ export const toggleTranslateAction: Action = {
       appState: {
         openDialog: appState.openDialog === "translate" ? null : "translate",
       },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
@@ -450,16 +447,18 @@ export const toggleTranslateAction: Action = {
     const isActive = appState.openDialog === "translate";
     const currentLang = TRANSLATE_LANGS.find((l) => l.value === appState.translateTargetLang);
 
-    return React.createElement(TranslateSplitButton, {
-      isActive,
-      currentLang: currentLang ?? TRANSLATE_LANGS[1],
-      onMainClick: () => updateData(null),
-      onLangSelect: (lang: string) => {
-        // 切换语言时单独 dispatch 一个 changeTranslateTargetLang Action
-        // 这里借助 updateData 传递附加指令
-        updateData({ __changeLang: lang });
-      },
-    });
+    return (
+      <TranslateSplitButton
+        isActive={isActive}
+        currentLang={currentLang ?? TRANSLATE_LANGS[1]}
+        onMainClick={() => updateData(null)}
+        onLangSelect={(lang: string) => {
+          // 切换语言时单独 dispatch 一个 changeTranslateTargetLang Action
+          // 这里借助 updateData 传递附加指令
+          updateData({ __changeLang: lang });
+        }}
+      />
+    );
   },
 };
 
@@ -479,7 +478,7 @@ export const changeTranslateTargetLangAction: Action = {
     const { lang } = formData as { lang: string };
     return {
       appState: { translateTargetLang: lang },
-      captureHistory: false,
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 };
@@ -506,7 +505,7 @@ export const TRANSLATE_LANGS = [
 /**
  * TranslateSplitButton —— 翻译分裂按钮
  *
- * 放在 actions.ts 里而不是组件文件里，原因是它属于 toggleTranslateAction
+ * 放在 actions.tsx 里而不是组件文件里，原因是它属于 toggleTranslateAction
  * 的 PanelComponent，与 Action 的数据逻辑强绑定。
  * 对标 Excalidraw 的 Action.PanelComponent 内联定义模式。
  *
@@ -553,147 +552,131 @@ function TranslateSplitButton({
     return () => window.removeEventListener("keydown", handler, true);
   }, [menuOpen]);
 
-  return React.createElement(
-    "div",
-    { className: "relative flex items-center" },
-    // 整体边框容器
-    React.createElement(
-      "div",
-      {
-        className: [
+  return (
+    <div className="relative flex items-center">
+      {/* 整体边框容器 */}
+      <div
+        className={[
           "flex items-center rounded-lg border transition-all duration-150",
           isActive
             ? "border-blue-500/40 bg-blue-500/10"
             : "border-transparent hover:border-gray-700/60",
-        ].join(" "),
-      },
-      // 左侧主体按钮
-      React.createElement(
-        "button",
-        {
-          type: "button",
-          title: `翻译 → ${currentLang.label} (Ctrl+T)`,
-          "aria-label": "翻译",
-          "aria-pressed": isActive,
-          onClick: onMainClick,
-          className: [
+        ].join(" ")}
+      >
+        {/* 左侧主体按钮 */}
+        <button
+          type="button"
+          title={`翻译 → ${currentLang.label} (Ctrl+T)`}
+          aria-label="翻译"
+          aria-pressed={isActive}
+          onClick={onMainClick}
+          className={[
             "flex items-center gap-1 pl-2.5 pr-2 h-8 rounded-l-lg",
             "text-[13px] font-medium transition-colors duration-100 select-none",
             "border-r border-gray-700/50",
             isActive ? "text-blue-400" : "text-gray-400 hover:text-white",
-          ].join(" "),
-        },
-        React.createElement("span", { className: "text-[14px] leading-none" }, "🌐"),
-        React.createElement("span", { className: "text-[13px] leading-none" }, currentLang.flag),
-      ),
-      // 右侧箭头按钮
-      React.createElement(
-        "button",
-        {
-          ref: arrowRef,
-          type: "button",
-          title: "选择翻译目标语言",
-          "aria-label": "选择目标语言",
-          "aria-haspopup": "listbox",
-          "aria-expanded": menuOpen,
-          onClick: (e: React.MouseEvent) => {
+          ].join(" ")}
+        >
+          <span className="text-[14px] leading-none">🌐</span>
+          <span className="text-[13px] leading-none">{currentLang.flag}</span>
+        </button>
+        {/* 右侧箭头按钮 */}
+        <button
+          ref={arrowRef}
+          type="button"
+          title="选择翻译目标语言"
+          aria-label="选择目标语言"
+          aria-haspopup="listbox"
+          aria-expanded={menuOpen}
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             setMenuOpen((p) => !p);
-          },
-          className: [
+          }}
+          className={[
             "flex items-center justify-center w-5 h-8 rounded-r-lg",
             "transition-colors duration-100 select-none",
             menuOpen || isActive ? "text-blue-400" : "text-gray-500 hover:text-white",
-          ].join(" "),
-        },
-        React.createElement(ChevronDownIcon, { open: menuOpen }),
-      ),
-    ),
-    // 语言下拉菜单
-    menuOpen &&
-      React.createElement(
-        "div",
-        {
-          ref: menuRef,
-          role: "listbox",
-          "aria-label": "选择目标语言",
-          className:
-            "absolute top-full right-0 mt-1.5 z-50 bg-gray-900 border border-gray-700/80 rounded-xl shadow-xl py-1 min-w-[128px] overflow-hidden",
-        },
-        React.createElement(
-          "div",
-          {
-            className:
-              "px-2.5 py-1 mb-0.5 text-[10px] text-gray-500 font-medium uppercase tracking-wide select-none",
-          },
-          "翻译目标语言",
-        ),
-        ...TRANSLATE_LANGS.map((lang) =>
-          React.createElement(
-            "button",
-            {
-              key: lang.value,
-              type: "button",
-              role: "option",
-              "aria-selected": lang.value === currentLang.value,
-              onClick: () => {
+          ].join(" ")}
+        >
+          <ChevronDownIcon open={menuOpen} />
+        </button>
+      </div>
+      {/* 语言下拉菜单 */}
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label="选择目标语言"
+          className="absolute top-full right-0 mt-1.5 z-50 bg-gray-900 border border-gray-700/80 rounded-xl shadow-xl py-1 min-w-[128px] overflow-hidden"
+        >
+          <div className="px-2.5 py-1 mb-0.5 text-[10px] text-gray-500 font-medium uppercase tracking-wide select-none">
+            翻译目标语言
+          </div>
+          {TRANSLATE_LANGS.map((lang) => (
+            <button
+              key={lang.value}
+              type="button"
+              role="option"
+              aria-selected={lang.value === currentLang.value}
+              onClick={() => {
                 onLangSelect(lang.value);
                 setMenuOpen(false);
-              },
-              className: [
+              }}
+              className={[
                 "w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-left",
                 "transition-colors duration-75 select-none",
                 lang.value === currentLang.value
                   ? "bg-blue-500/15 text-blue-300"
                   : "text-gray-300 hover:bg-gray-700/60 hover:text-white",
-              ].join(" "),
-            },
-            React.createElement("span", { className: "text-sm leading-none" }, lang.flag),
-            React.createElement("span", null, lang.label),
-            lang.value === currentLang.value &&
-              React.createElement(
-                "span",
-                { className: "ml-auto text-blue-400" },
-                React.createElement(CheckMarkIcon, null),
-              ),
-          ),
-        ),
-      ),
+              ].join(" ")}
+            >
+              <span className="text-sm leading-none">{lang.flag}</span>
+              <span>{lang.label}</span>
+              {lang.value === currentLang.value && (
+                <span className="ml-auto text-blue-400">
+                  <CheckMarkIcon />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 function ChevronDownIcon({ open }: { open: boolean }) {
-  return React.createElement(
-    "svg",
-    {
-      width: 9,
-      height: 9,
-      viewBox: "0 0 10 10",
-      fill: "none",
-      stroke: "currentColor",
-      strokeWidth: 2,
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-      style: { transition: "transform 150ms", transform: open ? "rotate(180deg)" : "rotate(0deg)" },
-    },
-    React.createElement("path", { d: "M2 3.5l3 3 3-3" }),
+  return (
+    <svg
+      width={9}
+      height={9}
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transition: "transform 150ms", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+    >
+      <path d="M2 3.5l3 3 3-3" />
+    </svg>
   );
 }
 
 function CheckMarkIcon() {
-  return React.createElement(
-    "svg",
-    {
-      width: 10,
-      height: 10,
-      viewBox: "0 0 12 12",
-      fill: "none",
-      stroke: "currentColor",
-      strokeWidth: 2.2,
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-    },
-    React.createElement("path", { d: "M1 6l4 4 6-8" }),
+  return (
+    <svg
+      width={10}
+      height={10}
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 6l4 4 6-8" />
+    </svg>
   );
 }
 
@@ -785,7 +768,8 @@ function cloneElementsWithNewIds(
  *
  * 快捷键：Ctrl+C / Cmd+C
  *
- * 设计模式：返回 _clipboardWrite 标记，由 updater 执行实际的剪贴板写入
+ * 通过 sideEffect: { type: "clipboardWrite" } 声明意图，
+ * 由 updater 执行实际的剪贴板写入。
  */
 export const copyElementsAction: Action = {
   name: "copyElements",
@@ -794,14 +778,14 @@ export const copyElementsAction: Action = {
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
-      return { captureHistory: false };
+      return { captureUpdate: CaptureUpdateAction.NEVER };
     }
 
     const clipboardText = serializeElementsForClipboard(elements, appState.selectedElementIds);
 
     return {
-      appState: { _clipboardWrite: clipboardText } as unknown as Partial<AppState>,
-      captureHistory: false,
+      sideEffect: { type: "clipboardWrite", text: clipboardText },
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
@@ -828,8 +812,9 @@ export const copyElementsAction: Action = {
  *
  * 快捷键：Ctrl+X / Cmd+X
  *
- * 设计模式：返回 _clipboardWrite 标记 + 删除选中元素
- * 这是 Action 组合的典型例子：剪切 = 复制 + 删除
+ * 通过 sideEffect: { type: "clipboardWrite" } 声明剪贴板写入意图，
+ * 同时返回 elements 变更（删除选中元素）。
+ * updater 先执行 sideEffect，再应用 elements/appState 变更。
  */
 export const cutElementsAction: Action = {
   name: "cutElements",
@@ -838,7 +823,7 @@ export const cutElementsAction: Action = {
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
-      return { captureHistory: false };
+      return { captureUpdate: CaptureUpdateAction.NEVER };
     }
 
     // 复制到剪贴板
@@ -853,9 +838,9 @@ export const cutElementsAction: Action = {
       elements: newElements,
       appState: {
         selectedElementIds: new Set<string>(),
-        _clipboardWrite: clipboardText,
-      } as unknown as Partial<AppState>,
-      captureHistory: true,
+      },
+      sideEffect: { type: "clipboardWrite", text: clipboardText },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
 
@@ -882,35 +867,28 @@ export const cutElementsAction: Action = {
  *
  * 快捷键：Ctrl+V / Cmd+V
  *
- * 设计模式：
- * 1. 首先返回 _clipboardReadRequested 标记
- * 2. updater 读取剪贴板内容后，调用 pasteElementsAction.applyPaste
- * 3. applyPaste 返回实际的元素变更
+ * 通过 sideEffect: { type: "clipboardReadAndPaste" } 声明意图：
+ * 1. updater 识别 sideEffect 后异步读取剪贴板
+ * 2. 读取完成后调用 onAsyncComplete 获取实际的元素变更
+ * 3. 应用变更并记入历史
  */
-export const pasteElementsAction: Action & {
-  applyPaste: (
-    elements: readonly CanvasElement[],
-    appState: Readonly<AppState>,
-    clipboardText: string,
-  ) => { elements: readonly CanvasElement[]; appState: Partial<AppState> } | null;
-} = {
+export const pasteElementsAction: Action = {
   name: "pasteElements",
   label: "粘贴",
   icon: "📥",
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
-    // 请求读取剪贴板
     return {
-      appState: { _clipboardReadRequested: true } as unknown as Partial<AppState>,
-      captureHistory: false,
+      sideEffect: { type: "clipboardReadAndPaste" },
+      captureUpdate: CaptureUpdateAction.NEVER,
     };
   },
 
   /**
-   * 实际应用粘贴操作
+   * 异步副作用完成后的回调：剪贴板读取完成后应用粘贴
    * 由 updater 在读取剪贴板后调用
    */
-  applyPaste(
+  onAsyncComplete(
     elements: readonly CanvasElement[],
     _appState: Readonly<AppState>,
     clipboardText: string,

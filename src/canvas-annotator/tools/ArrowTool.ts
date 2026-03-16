@@ -7,6 +7,7 @@ import type {
   ArrowElement,
   PropertyPanelConfig,
 } from "../types";
+import { CaptureUpdateAction } from "../types";
 import { createArrowElement } from "../elements/factory";
 import { BaseTool } from "./BaseTool";
 
@@ -116,7 +117,7 @@ export class ArrowTool extends BaseTool {
     return {
       elements: newElements,
       appState: { isDrawing: false },
-      captureHistory: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   }
 
