@@ -1154,13 +1154,22 @@ export const EXAMPLE_AUTO_SAVE_MANIFEST: PluginManifest = {
   activationEvents: ["onStartup"],
   permissions: [
     "editor:getContent",
+    "editor:insertText",
     "events:on",
     "storage:get",
     "storage:set",
     "statusBar:update",
+    "commands:register",
     "configuration:read",
   ],
   contributes: {
+    commands: [
+      {
+        command: "auto-save.restore",
+        title: "恢复上次保存的内容",
+        icon: "🔄",
+      },
+    ],
     statusBar: [
       {
         id: "auto-save.status",
@@ -1168,6 +1177,7 @@ export const EXAMPLE_AUTO_SAVE_MANIFEST: PluginManifest = {
         alignment: "right",
         priority: 50,
         tooltip: "自动保存状态",
+        command: "auto-save.restore",
       },
     ],
     configuration: {

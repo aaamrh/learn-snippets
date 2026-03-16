@@ -139,6 +139,9 @@ const autoSavePlugin: PluginEntry = {
     /** 保存次数计数器 */
     let saveCount: number = 0;
 
+    /** 可恢复的内容（激活时从 storage 读取，恢复后清空） */
+    let pendingRestoreContent: string | null = null;
+
     // ── 核心保存函数 ──────────────────────────────────────────
 
     /**
@@ -193,13 +196,6 @@ const autoSavePlugin: PluginEntry = {
           icon: "💾",
         });
 
-        // 8. 通知宿主（UI 可以显示 toast 等反馈）
-        api.events.emit("auto-save:saved", {
-          timestamp: lastSaveTime,
-          contentLength: content.length,
-          saveCount,
-        });
-
         console.log(
           `[AutoSave] Saved (${content.length} chars, #${saveCount}) at ${formatTime(new Date())}`,
         );
@@ -220,6 +216,18 @@ const autoSavePlugin: PluginEntry = {
      * 刷新状态栏显示（更新"xx 秒前"等相对时间）
      */
     function refreshStatusBar(): void {
+      // 有待恢复内容时，优先展示恢复提示，引导用户主动点击
+      if (pendingRestoreContent !== null) {
+        const chars = pendingRestoreContent.length;
+        const savedAt = lastSaveTime > 0 ? formatTimeSince(lastSaveTime) : "未知时间";
+        api.statusBar.update(STATUS_BAR_ID, {
+          label: `💾 有可恢复内容 (${chars} 字符，${savedAt})`,
+          value: "点击恢复上次保存的内容",
+          icon: "🔄",
+        });
+        return;
+      }
+
       if (lastSaveTime === 0) {
         // 尚未保存过
         api.statusBar.update(STATUS_BAR_ID, {
@@ -240,7 +248,23 @@ const autoSavePlugin: PluginEntry = {
 
     // ── 初始化 ──────────────────────────────────────────────
 
-    // 1. 尝试恢复上次保存的信息
+    // 1. 注册恢复命令 — 用户主动点击状态栏时执行
+    //    插件只需 commands:register 权限，不再需要 events:emit
+    api.commands.registerCommand("auto-save.restore", async () => {
+      if (pendingRestoreContent === null) return;
+
+      try {
+        await api.editor.insertText(pendingRestoreContent);
+        console.log(`[AutoSave] Content restored (${pendingRestoreContent.length} chars).`);
+        pendingRestoreContent = null;
+        // 恢复后刷新状态栏，回到正常显示
+        refreshStatusBar();
+      } catch (error) {
+        console.error("[AutoSave] Failed to restore content:", error);
+      }
+    });
+
+    // 2. 尝试从 storage 读取上次保存的信息
     (async () => {
       try {
         const savedHash = await api.storage.get(STORAGE_KEY_HASH);
@@ -260,16 +284,11 @@ const autoSavePlugin: PluginEntry = {
             `[AutoSave] Found saved content (${savedContent.length} chars, ` +
               `last saved: ${lastSaveTime > 0 ? formatTimeSince(lastSaveTime) : "unknown"})`,
           );
-
-          // 通知宿主有可恢复的内容（宿主决定是否恢复）
-          api.events.emit("auto-save:content-available", {
-            contentLength: savedContent.length,
-            savedAt: lastSaveTime,
-            content: savedContent,
-          });
+          // 暂存到闭包变量，由用户通过状态栏点击主动恢复，不自动覆盖编辑器
+          pendingRestoreContent = savedContent;
         }
 
-        // 初始化状态栏
+        // 初始化状态栏（若有可恢复内容，会展示恢复提示）
         refreshStatusBar();
       } catch (error) {
         console.error("[AutoSave] Failed to restore saved state:", error);
