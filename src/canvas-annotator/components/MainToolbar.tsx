@@ -3,18 +3,14 @@
 import React from "react";
 import type { ToolType, AppState } from "../types";
 import { TOOLBAR_ITEMS } from "../types";
+import type { ActionManager } from "../actions/ActionManager";
 
 // ==================== Props ====================
 
 interface MainToolbarProps {
   appState: Readonly<AppState>;
+  actionManager: ActionManager;
   onToolChange: (toolType: ToolType) => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  onClear: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  canClear: boolean;
 }
 
 // ==================== 主工具栏 ====================
@@ -22,27 +18,31 @@ interface MainToolbarProps {
 /**
  * MainToolbar —— 主工具栏
  *
- * 包含：
- * - 绘图工具切换按钮（画笔、矩形、圆形、箭头、文字、橡皮擦、选择）
- * - 分隔符
- * - 撤销 / 重做按钮
- * - 清空画布按钮
+ * 设计要点（对标 Excalidraw LayerUI + Actions.tsx）：
  *
- * 设计要点：
- * - 当前激活的工具按钮高亮（通过 appState.activeTool 匹配）
- * - 撤销/重做按钮在不可用时 disabled
- * - 所有操作通过 props 回调触发，组件本身不持有状态
+ * ❌ 旧方式（平铺直叙）：
+ *   <MainToolbar onUndo={...} onRedo={...} onClear={...} canUndo={...} ... />
+ *   Toolbar 硬编码每个按钮的 onClick / disabled 逻辑，与业务强耦合
+ *
+ * ✅ 新方式（对标 Excalidraw）：
+ *   <MainToolbar actionManager={actionManager} ... />
+ *   Toolbar 只负责布局，按钮的 UI、disabled、onClick 全由 Action.PanelComponent 自己提供
+ *   增删按钮 = 增删一个 Action，Toolbar 代码不用动
+ *
+ * renderAction("undo")     → undoAction.PanelComponent
+ * renderAction("redo")     → redoAction.PanelComponent
+ * renderAction("clearCanvas") → clearCanvasAction.PanelComponent
+ * renderAction("toggleTranslate") → toggleTranslateAction.PanelComponent（SplitButton）
+ *
+ * isEnabled 通过 extraProps 注入给需要 disabled 状态的按钮：
+ *   actionManager.renderAction("undo", { isEnabled: canUndo })
  */
-export function MainToolbar({
-  appState,
-  onToolChange,
-  onUndo,
-  onRedo,
-  onClear,
-  canUndo,
-  canRedo,
-  canClear,
-}: MainToolbarProps) {
+export function MainToolbar({ appState, actionManager, onToolChange }: MainToolbarProps) {
+  // canUndo / canRedo 需要从外部传进来，因为 HistoryManager 不在 ActionManager 里
+  // 通过 isActionEnabled 检查 predicate 来决定是否可用
+  const canUndo = actionManager.isActionEnabled("undo");
+  const canRedo = actionManager.isActionEnabled("redo");
+
   return (
     <div className="flex items-center gap-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl shadow-lg">
       {/* ==================== 工具按钮组 ==================== */}
@@ -59,43 +59,45 @@ export function MainToolbar({
         ))}
       </div>
 
-      {/* ==================== 分隔符 ==================== */}
       <Separator />
 
-      {/* ==================== 撤销 / 重做 ==================== */}
+      {/* ==================== 撤销 / 重做（走 renderAction） ==================== */}
+      {/*
+       * 对标 Excalidraw 的 UndoRedoActions：
+       *   {renderAction("undo")}
+       *   {renderAction("redo")}
+       * isEnabled 作为 extraProps 注入，Action.PanelComponent 用它控制 disabled
+       */}
       <div className="flex items-center gap-0.5">
-        <ActionButton
-          label="撤销"
-          icon="↶"
-          onClick={onUndo}
-          disabled={!canUndo}
-          shortcut="Ctrl+Z"
-        />
-        <ActionButton
-          label="重做"
-          icon="↷"
-          onClick={onRedo}
-          disabled={!canRedo}
-          shortcut="Ctrl+Y"
-        />
+        {actionManager.renderAction("undo", { isEnabled: canUndo })}
+        {actionManager.renderAction("redo", { isEnabled: canRedo })}
       </div>
 
-      {/* ==================== 分隔符 ==================== */}
       <Separator />
 
-      {/* ==================== 清空画布 ==================== */}
-      <ActionButton
-        label="清空"
-        icon="🗑"
-        onClick={onClear}
-        disabled={!canClear}
-        variant="danger"
-      />
+      {/* ==================== 清空画布（走 renderAction） ==================== */}
+      {/*
+       * clearCanvasAction.predicate 会检查是否有可见元素
+       * PanelComponent 内部通过 elements 自行判断 disabled
+       */}
+      {actionManager.renderAction("clearCanvas")}
+
+      <Separator />
+
+      {/* ==================== 翻译 SplitButton（走 renderAction） ==================== */}
+      {/*
+       * toggleTranslateAction.PanelComponent = TranslateSplitButton
+       * 左侧点击 → perform() → 切换 appState.openDialog
+       * 右侧箭头 → 弹出语言菜单 → updateData({ __changeLang: lang })
+       *   → ActionManager.renderAction 内部拦截 __changeLang
+       *   → dispatch changeTranslateTargetLang Action
+       */}
+      {actionManager.renderAction("toggleTranslate")}
     </div>
   );
 }
 
-// ==================== 工具按钮 ====================
+// ==================== ToolButton ====================
 
 interface ToolButtonProps {
   type: ToolType;
@@ -105,7 +107,7 @@ interface ToolButtonProps {
   onClick: () => void;
 }
 
-function ToolButton({ type, label, icon, isActive, onClick }: ToolButtonProps) {
+function ToolButton({ label, icon, isActive, onClick }: ToolButtonProps) {
   return (
     <button
       type="button"
@@ -124,8 +126,6 @@ function ToolButton({ type, label, icon, isActive, onClick }: ToolButtonProps) {
       `}
     >
       <span className="text-[15px] leading-none">{icon}</span>
-
-      {/* 激活指示器（底部小点） */}
       {isActive && (
         <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
       )}
@@ -133,53 +133,7 @@ function ToolButton({ type, label, icon, isActive, onClick }: ToolButtonProps) {
   );
 }
 
-// ==================== 操作按钮 ====================
-
-interface ActionButtonProps {
-  label: string;
-  icon: string;
-  onClick: () => void;
-  disabled?: boolean;
-  shortcut?: string;
-  variant?: "default" | "danger";
-}
-
-function ActionButton({
-  label,
-  icon,
-  onClick,
-  disabled = false,
-  shortcut,
-  variant = "default",
-}: ActionButtonProps) {
-  const title = shortcut ? `${label} (${shortcut})` : label;
-
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={`
-        flex items-center justify-center w-9 h-9 rounded-lg
-        text-base transition-all duration-150 select-none
-        border border-transparent
-        ${
-          disabled
-            ? "text-gray-600 cursor-not-allowed opacity-50"
-            : variant === "danger"
-              ? "text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30"
-              : "text-gray-400 hover:text-white hover:bg-gray-700/60"
-        }
-      `}
-    >
-      <span className="text-[15px] leading-none">{icon}</span>
-    </button>
-  );
-}
-
-// ==================== 分隔符 ====================
+// ==================== Separator ====================
 
 function Separator() {
   return <div className="w-px h-6 bg-gray-700 mx-1.5" />;

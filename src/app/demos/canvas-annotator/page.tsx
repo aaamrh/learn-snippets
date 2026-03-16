@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect, type RefObject } from "react";
 import type { AppState, CanvasElement, ToolType, ActionResult } from "@/canvas-annotator/types";
 import { createDefaultAppState } from "@/canvas-annotator/types";
 import { HistoryManager } from "@/canvas-annotator/actions/HistoryManager";
 import { ActionManager } from "@/canvas-annotator/actions/ActionManager";
-import { ALL_ACTIONS } from "@/canvas-annotator/actions/actions";
+import { ALL_ACTIONS, pasteElementsAction } from "@/canvas-annotator/actions/actions";
 import { ToolRegistry } from "@/canvas-annotator/tools/ToolRegistry";
 import { MainToolbar } from "@/canvas-annotator/components/MainToolbar";
 import { SecondaryToolbar } from "@/canvas-annotator/components/SecondaryToolbar";
 import { AnnotatorCanvas } from "@/canvas-annotator/components/AnnotatorCanvas";
+import { TranslatePopover } from "@/canvas-annotator/components/TranslateModal";
 
 // ==================== 页面组件 ====================
 
@@ -32,6 +33,9 @@ export default function CanvasAnnotatorPage() {
 
   const [elements, setElements] = useState<readonly CanvasElement[]>([]);
   const [appState, setAppState] = useState<AppState>(createDefaultAppState);
+
+  // 翻译 Popover 锚点：挂在工具栏容器上，TranslatePopover 据此定位
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   // 用 ref 保存最新状态，避免闭包陷阱
   const elementsRef = useRef(elements);
@@ -108,6 +112,69 @@ export default function CanvasAnnotatorPage() {
         return;
       }
 
+      // 特殊处理：剪贴板写入请求（复制/剪切）
+      if (result.appState && "_clipboardWrite" in result.appState) {
+        const clipboardText = (result.appState as Record<string, unknown>)._clipboardWrite as string;
+
+        // 异步写入剪贴板（不阻塞 UI）
+        navigator.clipboard.writeText(clipboardText).catch((err) => {
+          console.warn("Failed to write to clipboard:", err);
+        });
+
+        // 如果是剪切操作（有 elements 变更），需要继续处理
+        // 清理 _clipboardWrite 标记后继续走正常流程
+        const cleanResult = {
+          ...result,
+          appState: { ...result.appState },
+        };
+        delete (cleanResult.appState as Record<string, unknown>)["_clipboardWrite"];
+
+        // 如果只是复制（没有 elements 变更），直接返回
+        if (!result.elements) {
+          return;
+        }
+
+        // 剪切操作：继续处理元素删除
+        result = cleanResult;
+      }
+
+      // 特殊处理：剪贴板读取请求（粘贴）
+      if (result.appState && "_clipboardReadRequested" in result.appState) {
+        // 异步读取剪贴板并应用粘贴
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            const pasteResult = pasteElementsAction.applyPaste(
+              elementsRef.current,
+              appStateRef.current,
+              text,
+            );
+
+            if (pasteResult) {
+              // 粘贴操作需要记入历史
+              historyManager.push({
+                elements: elementsRef.current,
+                appState: {
+                  activeTool: appStateRef.current.activeTool,
+                  currentStrokeColor: appStateRef.current.currentStrokeColor,
+                  currentFillColor: appStateRef.current.currentFillColor,
+                  currentStrokeWidth: appStateRef.current.currentStrokeWidth,
+                  currentFontSize: appStateRef.current.currentFontSize,
+                  currentOpacity: appStateRef.current.currentOpacity,
+                },
+              });
+
+              setElements(pasteResult.elements);
+              setAppState((prev) => ({ ...prev, ...pasteResult.appState }));
+            }
+          })
+          .catch((err) => {
+            console.warn("Failed to read from clipboard:", err);
+          });
+
+        return;
+      }
+
       // 如果需要记入历史，先保存当前快照
       if (result.captureHistory) {
         historyManager.push({
@@ -133,6 +200,8 @@ export default function CanvasAnnotatorPage() {
         const cleanState = { ...result.appState };
         delete (cleanState as Record<string, unknown>)["_undoRequested"];
         delete (cleanState as Record<string, unknown>)["_redoRequested"];
+        delete (cleanState as Record<string, unknown>)["_clipboardWrite"];
+        delete (cleanState as Record<string, unknown>)["_clipboardReadRequested"];
 
         setAppState((prev) => ({ ...prev, ...cleanState }));
       }
@@ -161,6 +230,15 @@ export default function CanvasAnnotatorPage() {
     );
   }, [actionManager, updater]);
 
+  // 注入历史状态 getter：让 isActionEnabled("undo"/"redo") 能返回真实状态
+  // ActionManager 不直接依赖 HistoryManager，通过 getter 解耦
+  useEffect(() => {
+    actionManager.setHistoryStateGetter(() => ({
+      canUndo: historyManager.canUndo(),
+      canRedo: historyManager.canRedo(),
+    }));
+  }, [actionManager, historyManager]);
+
   // ==================== 键盘快捷键处理 ====================
 
   useEffect(() => {
@@ -176,7 +254,7 @@ export default function CanvasAnnotatorPage() {
         return;
       }
 
-      // 交给 ActionManager 处理（undo/redo/delete/selectAll 等）
+      // 交给 ActionManager 处理（undo/redo/delete/selectAll/toggleTranslate 等）
       actionManager.handleKeyDown(e);
     };
 
@@ -239,19 +317,18 @@ export default function CanvasAnnotatorPage() {
     [updater],
   );
 
-  // ==================== Undo/Redo/Clear 快捷操作 ====================
+  // ==================== 翻译弹窗关闭 ====================
 
-  const handleUndo = useCallback(() => {
-    actionManager.executeAction("undo");
-  }, [actionManager]);
-
-  const handleRedo = useCallback(() => {
-    actionManager.executeAction("redo");
-  }, [actionManager]);
-
-  const handleClear = useCallback(() => {
-    actionManager.executeAction("clearCanvas");
-  }, [actionManager]);
+  /**
+   * 关闭翻译 Popover：通过 ActionManager 将 openDialog 置为 null
+   * 这样关闭行为也走 Action 管道，保持数据流一致
+   */
+  const handleTranslateClose = useCallback(() => {
+    updater({
+      appState: { openDialog: null },
+      captureHistory: false,
+    });
+  }, [updater]);
 
   // ==================== 属性面板配置 ====================
 
@@ -269,16 +346,18 @@ export default function CanvasAnnotatorPage() {
       {/* ==================== 顶部工具区 ==================== */}
       <div className="flex flex-col items-center gap-2 pt-3 pb-2 px-4 z-10">
         {/* 主工具栏 */}
-        <MainToolbar
-          appState={appState}
-          onToolChange={handleToolChange}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onClear={handleClear}
-          canUndo={historyManager.canUndo()}
-          canRedo={historyManager.canRedo()}
-          canClear={elements.some((el) => !el.isDeleted)}
-        />
+        {/*
+         * 对标 Excalidraw LayerUI：Toolbar 只接收 actionManager
+         * 所有按钮（撤销/重做/清空/翻译）都通过 actionManager.renderAction() 渲染
+         * Toolbar 本身不感知任何业务逻辑
+         */}
+        <div ref={toolbarRef}>
+          <MainToolbar
+            appState={appState}
+            actionManager={actionManager}
+            onToolChange={handleToolChange}
+          />
+        </div>
 
         {/* 二级工具条 */}
         <SecondaryToolbar
@@ -305,38 +384,36 @@ export default function CanvasAnnotatorPage() {
             元素: <span className="text-gray-300 font-mono">{visibleElementCount}</span>
           </span>
           <span>
-            工具:{" "}
-            <span className="text-gray-300">
-              {getToolLabel(appState.activeTool)}
-            </span>
+            工具: <span className="text-gray-300">{getToolLabel(appState.activeTool)}</span>
           </span>
           {appState.selectedElementIds.size > 0 && (
             <span>
               选中:{" "}
-              <span className="text-blue-400 font-mono">
-                {appState.selectedElementIds.size}
-              </span>
+              <span className="text-blue-400 font-mono">{appState.selectedElementIds.size}</span>
             </span>
           )}
         </div>
         <div className="flex items-center gap-4">
           <span>
-            撤销栈:{" "}
-            <span className="text-gray-300 font-mono">
-              {historyManager.undoSize()}
-            </span>
+            撤销栈: <span className="text-gray-300 font-mono">{historyManager.undoSize()}</span>
           </span>
           <span>
-            重做栈:{" "}
-            <span className="text-gray-300 font-mono">
-              {historyManager.redoSize()}
-            </span>
+            重做栈: <span className="text-gray-300 font-mono">{historyManager.redoSize()}</span>
           </span>
-          <span className="text-gray-600">
-            缩放: {Math.round(appState.zoom * 100)}%
-          </span>
+          <span className="text-gray-600">缩放: {Math.round(appState.zoom * 100)}%</span>
         </div>
       </div>
+      {/* ==================== 翻译 Popover ==================== */}
+      {/*
+       * openDialog 由 toggleTranslateAction.perform 控制（appState 的一部分）
+       * TranslatePopover 锚定在工具栏容器上，不再需要单独的 ref 穿透
+       */}
+      <TranslatePopover
+        anchorRef={toolbarRef}
+        isOpen={appState.openDialog === "translate"}
+        onClose={handleTranslateClose}
+        targetLangProp={appState.translateTargetLang}
+      />
     </div>
   );
 }
