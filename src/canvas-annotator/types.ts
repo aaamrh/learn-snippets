@@ -115,7 +115,6 @@ export interface ActionPanelProps {
 export interface Action {
   name: string;
   label: string;
-  icon?: string;
   /**
    * 执行动作，返回新的 elements + appState（纯函数，不可变更新）
    * @param elements 当前所有元素
@@ -161,7 +160,8 @@ export type ActionSideEffect =
   | { type: "requestUndo" }
   | { type: "requestRedo" }
   | { type: "clipboardWrite"; text: string }
-  | { type: "clipboardReadAndPaste" };
+  | { type: "clipboardReadAndPaste" }
+  | { type: "switchTool"; toolType: ToolType };
 
 // ==================== CaptureUpdateAction ====================
 
@@ -322,20 +322,21 @@ export interface HitTestResult {
 
 // ==================== 工具栏相关 ====================
 
-export interface ToolbarItem {
+export interface ShapeDefinition {
   type: ToolType;
   label: string;
   icon: string;
+  shortcutKey?: string;
 }
 
-export const TOOLBAR_ITEMS: ToolbarItem[] = [
-  { type: "pen", label: "画笔", icon: "✏️" },
-  { type: "rect", label: "矩形", icon: "▢" },
-  { type: "circle", label: "圆形", icon: "○" },
-  { type: "arrow", label: "箭头", icon: "→" },
-  { type: "text", label: "文字", icon: "T" },
-  { type: "eraser", label: "橡皮擦", icon: "⌫" },
-  { type: "select", label: "选择", icon: "↖" },
+export const SHAPES: ShapeDefinition[] = [
+  { type: "select", label: "选择", icon: "↖", shortcutKey: "v" },
+  { type: "pen", label: "画笔", icon: "✏️", shortcutKey: "p" },
+  { type: "rect", label: "矩形", icon: "▢", shortcutKey: "r" },
+  { type: "circle", label: "圆形", icon: "○", shortcutKey: "o" },
+  { type: "arrow", label: "箭头", icon: "→", shortcutKey: "a" },
+  { type: "text", label: "文字", icon: "T", shortcutKey: "t" },
+  { type: "eraser", label: "橡皮擦", icon: "⌫", shortcutKey: "e" },
 ];
 
 export const PRESET_COLORS = [

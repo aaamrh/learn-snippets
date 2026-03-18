@@ -135,6 +135,20 @@ const DEMO_CARDS: DemoCard[] = [
   },
   // ==================== 原有 Demo ====================
   {
+    id: "contribution-points",
+    title: "Contribution Points",
+    subtitle: "Registry + 贡献点 + 渐进式 4 层",
+    description:
+      "渐进式揭示所有插件系统共享的核心模式：Command Registry → Toolbar Slot → Multiple Slots → Component Contributions。对标 VSCode / Excalidraw / Tiptap / 语雀的插件 UI 注册机制。",
+    href: "/demos/contribution-points",
+    icon: "🧱",
+    tags: ["Registry", "贡献点", "插槽", "渐进式"],
+    difficulty: 3,
+    status: "ready",
+    gradient: "from-orange-500/20 via-rose-500/10 to-transparent",
+    pattern: "plugin",
+  },
+  {
     id: "plugin-host",
     title: "VS Code 级插件系统",
     subtitle: "Manifest + 按需激活 + Worker 沙箱 + 权限模型",

@@ -1,6 +1,6 @@
 import React from "react";
-import { CaptureUpdateAction } from "../types";
-import type { Action, ActionPanelProps, CanvasElement, AppState } from "../types";
+import { CaptureUpdateAction, SHAPES } from "../types";
+import type { Action, ActionPanelProps, CanvasElement, AppState, ToolType } from "../types";
 
 // ==================== changeColor ====================
 
@@ -14,7 +14,6 @@ import type { Action, ActionPanelProps, CanvasElement, AppState } from "../types
 export const changeStrokeColorAction: Action = {
   name: "changeStrokeColor",
   label: "修改线条颜色",
-  icon: "🎨",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, formData: unknown) {
     const { color } = formData as { color: string };
@@ -50,7 +49,6 @@ export const changeStrokeColorAction: Action = {
 export const changeFillColorAction: Action = {
   name: "changeFillColor",
   label: "修改填充颜色",
-  icon: "🪣",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, formData: unknown) {
     const { color } = formData as { color: string };
@@ -84,7 +82,6 @@ export const changeFillColorAction: Action = {
 export const changeStrokeWidthAction: Action = {
   name: "changeStrokeWidth",
   label: "修改线宽",
-  icon: "━",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, formData: unknown) {
     const { width } = formData as { width: number };
@@ -118,7 +115,6 @@ export const changeStrokeWidthAction: Action = {
 export const changeFontSizeAction: Action = {
   name: "changeFontSize",
   label: "修改字号",
-  icon: "T",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, formData: unknown) {
     const { fontSize } = formData as { fontSize: number };
@@ -154,7 +150,6 @@ export const changeFontSizeAction: Action = {
 export const changeOpacityAction: Action = {
   name: "changeOpacity",
   label: "修改透明度",
-  icon: "◐",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, formData: unknown) {
     const { opacity } = formData as { opacity: number };
@@ -188,7 +183,6 @@ export const changeOpacityAction: Action = {
 export const deleteElementsAction: Action = {
   name: "deleteElements",
   label: "删除",
-  icon: "🗑",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
@@ -232,7 +226,6 @@ export const deleteElementsAction: Action = {
 export const clearCanvasAction: Action = {
   name: "clearCanvas",
   label: "清空画布",
-  icon: "🗑",
 
   perform(elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     const hasVisibleElements = elements.some((el) => !el.isDeleted);
@@ -287,7 +280,6 @@ export const clearCanvasAction: Action = {
 export const selectAllAction: Action = {
   name: "selectAll",
   label: "全选",
-  icon: "⊞",
 
   perform(elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     const visibleIds = new Set(elements.filter((el) => !el.isDeleted).map((el) => el.id));
@@ -322,7 +314,6 @@ export const selectAllAction: Action = {
 export const undoAction: Action = {
   name: "undo",
   label: "撤销",
-  icon: "↶",
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     return {
@@ -371,7 +362,6 @@ export const undoAction: Action = {
 export const redoAction: Action = {
   name: "redo",
   label: "重做",
-  icon: "↷",
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     return {
@@ -426,7 +416,6 @@ export const redoAction: Action = {
 export const toggleTranslateAction: Action = {
   name: "toggleTranslate",
   label: "翻译",
-  icon: "🌐",
 
   perform(_elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     return {
@@ -774,7 +763,6 @@ function cloneElementsWithNewIds(
 export const copyElementsAction: Action = {
   name: "copyElements",
   label: "复制",
-  icon: "📋",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
@@ -819,7 +807,6 @@ export const copyElementsAction: Action = {
 export const cutElementsAction: Action = {
   name: "cutElements",
   label: "剪切",
-  icon: "✂️",
 
   perform(elements: readonly CanvasElement[], appState: Readonly<AppState>, _formData: unknown) {
     if (appState.selectedElementIds.size === 0) {
@@ -875,7 +862,6 @@ export const cutElementsAction: Action = {
 export const pasteElementsAction: Action = {
   name: "pasteElements",
   label: "粘贴",
-  icon: "📥",
 
   perform(_elements: readonly CanvasElement[], _appState: Readonly<AppState>, _formData: unknown) {
     return {
@@ -918,6 +904,120 @@ export const pasteElementsAction: Action = {
   keyPriority: 50,
 };
 
+// ==================== changeActiveTool ====================
+
+/**
+ * ToolButton —— 工具按钮（从 MainToolbar 迁移至此）
+ *
+ * 作为 changeActiveToolAction.PanelComponent 的子组件，
+ * 跟随 Action 定义，对标 Excalidraw 的内联 PanelComponent 模式。
+ */
+function ToolButton({
+  label,
+  icon,
+  isActive,
+  shortcutKey,
+  onClick,
+}: {
+  label: string;
+  icon: string;
+  isActive: boolean;
+  shortcutKey?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={shortcutKey ? `${label} (${shortcutKey.toUpperCase()})` : label}
+      aria-label={label}
+      aria-pressed={isActive}
+      onClick={onClick}
+      className={`
+        relative flex items-center justify-center w-9 h-9 rounded-lg
+        text-base transition-all duration-150 select-none
+        ${
+          isActive
+            ? "bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-sm shadow-blue-500/10"
+            : "text-gray-400 hover:text-white hover:bg-gray-700/60 border border-transparent"
+        }
+      `}
+    >
+      <span className="text-[15px] leading-none">{icon}</span>
+      {isActive && (
+        <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-400" />
+      )}
+    </button>
+  );
+}
+
+/**
+ * Action: 切换当前工具
+ *
+ * 对标 Excalidraw 的 changeActiveTool Action：
+ * - PanelComponent 遍历 SHAPES 渲染 ToolButton
+ * - keyTest 匹配 SHAPES 的 shortcutKey（排除修饰键，避免干扰 Ctrl+T 等组合键）
+ * - perform 通过 sideEffect: { type: "switchTool" } 声明意图，由 updater 调用 toolRegistry.switchTool
+ */
+export const changeActiveToolAction: Action = {
+  name: "changeActiveTool",
+  label: "切换工具",
+
+  perform(
+    _elements: readonly CanvasElement[],
+    _appState: Readonly<AppState>,
+    formData: unknown,
+  ) {
+    const data = formData as { toolType?: ToolType; key?: string } | null;
+
+    let toolType: ToolType | undefined;
+
+    if (data?.toolType) {
+      toolType = data.toolType;
+    } else if (data?.key) {
+      const key = data.key.toLowerCase();
+      const shape = SHAPES.find((s) => s.shortcutKey === key);
+      if (shape) {
+        toolType = shape.type;
+      }
+    }
+
+    if (!toolType) {
+      return { captureUpdate: CaptureUpdateAction.NEVER };
+    }
+
+    return {
+      sideEffect: { type: "switchTool", toolType },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    };
+  },
+
+  keyTest(event: KeyboardEvent) {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
+      return false;
+    }
+    return SHAPES.some((s) => s.shortcutKey === event.key.toLowerCase());
+  },
+
+  keyPriority: -10,
+
+  PanelComponent({ appState, updateData }: ActionPanelProps) {
+    return (
+      <div className="flex items-center gap-0.5">
+        {SHAPES.map((shape) => (
+          <ToolButton
+            key={shape.type}
+            label={shape.label}
+            icon={shape.icon}
+            shortcutKey={shape.shortcutKey}
+            isActive={appState.activeTool === shape.type}
+            onClick={() => updateData({ toolType: shape.type })}
+          />
+        ))}
+      </div>
+    );
+  },
+};
+
 // ==================== 导出所有 Actions ====================
 
 /**
@@ -925,6 +1025,7 @@ export const pasteElementsAction: Action = {
  * 由 ActionManager.registerAll() 一次性注册
  */
 export const ALL_ACTIONS: readonly Action[] = [
+  changeActiveToolAction,
   changeStrokeColorAction,
   changeFillColorAction,
   changeStrokeWidthAction,

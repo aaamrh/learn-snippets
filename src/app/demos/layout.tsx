@@ -8,6 +8,7 @@ const DEMO_TITLES: Record<string, string> = {
   "/demos/price-engine": "价格计算引擎",
   "/demos/canvas-annotator": "截图标注工具",
   "/demos/rich-editor": "富文本编辑器",
+  "/demos/contribution-points": "Contribution Points 渐进式教学",
   "/demos/plugin-host": "VS Code 级插件系统",
   "/plugin-demo": "插件架构演示",
 };
@@ -17,6 +18,7 @@ const DEMO_ICONS: Record<string, string> = {
   "/demos/price-engine": "💰",
   "/demos/canvas-annotator": "🎨",
   "/demos/rich-editor": "📝",
+  "/demos/contribution-points": "🧱",
   "/demos/plugin-host": "🧩",
   "/plugin-demo": "🧩",
 };

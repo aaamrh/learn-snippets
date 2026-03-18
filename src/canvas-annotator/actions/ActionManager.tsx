@@ -160,7 +160,7 @@ export class ActionManager {
     event.stopPropagation();
 
     const topAction = matching[0];
-    const result = topAction.perform(elements, appState, null);
+    const result = topAction.perform(elements, appState, { key: event.key });
     if (result) {
       this.updater(result);
     }
@@ -215,13 +215,15 @@ export class ActionManager {
       }
     };
 
-    return React.createElement(PanelComponent, {
-      elements,
-      appState,
-      updateData,
-      key: name,
-      ...extraProps,
-    });
+    return (
+      <PanelComponent
+        elements={elements}
+        appState={appState}
+        updateData={updateData}
+        key={name}
+        {...extraProps}
+      />
+    );
   }
 
   /**

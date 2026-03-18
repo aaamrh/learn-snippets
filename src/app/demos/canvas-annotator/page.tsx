@@ -159,6 +159,15 @@ export default function CanvasAnnotatorPage() {
               });
             return;
           }
+          case "switchTool": {
+            const stateUpdates = toolRegistry.switchTool(
+              result.sideEffect.toolType,
+              appStateRef.current,
+            );
+            const merged = { ...result.appState, ...stateUpdates };
+            setAppState((prev) => ({ ...prev, ...merged }));
+            return;
+          }
         }
       }
 
@@ -233,16 +242,6 @@ export default function CanvasAnnotatorPage() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [actionManager]);
-
-  // ==================== 工具切换 ====================
-
-  const handleToolChange = useCallback(
-    (toolType: ToolType) => {
-      const stateUpdates = toolRegistry.switchTool(toolType, appStateRef.current);
-      setAppState((prev) => ({ ...prev, ...stateUpdates }));
-    },
-    [toolRegistry],
-  );
 
   // ==================== 属性面板变更 ====================
 
@@ -325,7 +324,6 @@ export default function CanvasAnnotatorPage() {
           <MainToolbar
             appState={appState}
             actionManager={actionManager}
-            onToolChange={handleToolChange}
           />
         </div>
 
