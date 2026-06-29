@@ -1,0 +1,245 @@
+# Instincts generated from https://github.com/aaamrh/learn-snippets
+# Generated: 2026-03-16T10:09:05.436Z
+# Version: 2.0
+
+---
+id: learn-snippets-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix
+
+## Evidence
+
+- 11 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: 编辑器, fix: 插件的硬编码
+
+---
+id: learn-snippets-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Commit Length
+
+## Action
+
+Keep commit messages concise (under 50 characters)
+
+## Evidence
+
+- Average commit message length: 16 chars
+- Based on 11 commits
+
+---
+id: learn-snippets-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: learn-snippets-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: learn-snippets-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Export Style
+
+## Action
+
+Prefer default exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: default
+
+---
+id: learn-snippets-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: app, cache-manager, canvas-annotator, components, config-center
+
+---
+id: learn-snippets-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: learn-snippets-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~22x per month
+- Files: src/app/plugin-demo/*, src/plugin-system/*, src/plugin-system/plugins/*
+
+---
+id: learn-snippets-workflow-add-new-demo-feature
+trigger: "when doing add new demo feature"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Workflow Add New Demo Feature
+
+## Action
+
+Follow the add-new-demo-feature workflow:
+1. Create or update implementation files in a new or existing feature directory (e.g., src/cache-manager/CacheManager.ts, src/di-container/Container.ts).
+2. Add or update a corresponding demo page under src/app/demos/[feature]/page.tsx.
+3. Update src/app/_data/demos.tsx and/or src/app/_data/scenarios.ts to register the new demo.
+4. Update src/app/demos/page.tsx or src/app/page.tsx to reflect the new demo.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: src/app/demos/*/page.tsx, src/app/_data/demos.tsx, src/app/_data/scenarios.ts
+
+---
+id: learn-snippets-workflow-add-or-enhance-plugin
+trigger: "when doing add or enhance plugin"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Workflow Add Or Enhance Plugin
+
+## Action
+
+Follow the add-or-enhance-plugin workflow:
+1. Create or update plugin files under src/plugin-system/plugins/ or src/plugin-system/plugins/v2/.
+2. Update src/plugin-system/manifest-types.ts or src/plugin-system/types.ts as needed.
+3. Update src/plugin-system/PluginHost.ts or related plugin system infrastructure.
+4. If applicable, update or add demo pages under src/app/demos/plugin-host/ or src/app/plugin-demo/page.tsx.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/plugin-system/plugins/*.ts, src/plugin-system/plugins/v2/*.ts, src/plugin-system/manifest-types.ts
+
+---
+id: learn-snippets-workflow-develop-canvas-annotator-feature
+trigger: "when doing develop canvas annotator feature"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/aaamrh/learn-snippets
+---
+
+# Learn Snippets Workflow Develop Canvas Annotator Feature
+
+## Action
+
+Follow the develop-canvas-annotator-feature workflow:
+1. Create or update files in src/canvas-annotator/tools/ for new tools.
+2. Update or add components in src/canvas-annotator/components/.
+3. Update core logic in src/canvas-annotator/actions/, src/canvas-annotator/elements/, or src/canvas-annotator/scene/.
+4. Update types in src/canvas-annotator/types.ts.
+5. Update or add demo page in src/app/demos/canvas-annotator/page.tsx.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/canvas-annotator/tools/*.ts, src/canvas-annotator/components/*.tsx, src/canvas-annotator/actions/*.ts
+
